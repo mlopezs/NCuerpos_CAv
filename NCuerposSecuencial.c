@@ -5,10 +5,10 @@
 #include "timer.h"
 
 #define FICHERO "datos.dat"
-
 #define G 1
 
 struct DatosCuerpo {
+	int id;
 	double masa;
 	double posicionX;
 	double posicionY;
@@ -23,21 +23,33 @@ int n, tp, k;
 double delta, u;
 struct DatosCuerpo *cuerpos;
 
+void imprimirCuerpos(int m){
+	for(int i = 0; i < n; i++){
+		printf("Cuerpo: %d -> ", cuerpos[i].id);
+		if(m) printf("Masa: %.2f\n", cuerpos[i].masa);
+		printf("Pos: (%.10f,%10f), Vel: (%.10f,%.10f), Ace: (%.10f,%.10f)\n", cuerpos[i].id, cuerpos[i].posicionX, cuerpos[i].posicionY, cuerpos[i].velocidadX, cuerpos[i].velocidadY, cuerpos[i].aceleracionX, cuerpos[i].aceleracionY);
+	}
+}
+
 void leerFichero()
 {
 
 	/*---------Lectura del archivo--------*/
 
-		if((fichero = fopen(FICHERO,"r")) == NULL) {
-			printf("Error al abrir el archivo");
-			exit(EXIT_FAILURE);
-		}
+	if((fichero = fopen(FICHERO,"r")) == NULL) {
+		printf("Error al abrir el archivo");
+		exit(EXIT_FAILURE);
+	}
 
-		fscanf(fichero, "%d, %lf, %d, %lf, %d", &n, &delta, &tp, &u, &k);
+	fscanf(fichero, "%d, %lf, %d, %lf, %d", &n, &delta, &tp, &u, &k);
 
-		printf("Los datos leídos del fichero son: %d, %.2f, %d, %.2f, %d\n", n, delta, tp, u, k);
+	printf("N: %d\n", n);
+	printf("Delta: %.2f\n", delta);
+	printf("Tp: %d\n", tp);
+	printf("U: %.2f\n", u);
+	printf("K: %d\n", k);
 
-		fclose(fichero);
+	fclose(fichero);
 }
 
 void leerEntradaTeclado()
@@ -59,21 +71,21 @@ void leerEntradaTeclado()
 void leerDatosCuerpo()
 {
 	int i;
-	char buffer[1024];
 	if((fichero = fopen(FICHERO,"r")) == NULL) {
 		printf("Error al abrir el archivo");
 		exit(EXIT_FAILURE);
 	}
 
-	fgets(buffer, 1024, fichero); /*--- Para situarnos en la segunda línea del archivo ---*/
+	fscanf(fichero, "%*[^\n]\n"); /*--- Para situarnos en la segunda línea del archivo ---*/
 	for (i = 0; i < n; i++)
 	{
 		fscanf(fichero, "%lf, %lf, %lf, %lf, %lf", &(cuerpos[i]).masa, &(cuerpos[i]).posicionX, &(cuerpos[i]).posicionY,
-			&(cuerpos[i]).velocidadX, &(cuerpos[i]).velocidadY);
-
-		printf("Los datos leídos son: Masa: %.1f " "PosicionX: %.3f " "PosicionY: %.3f " "VelocidadX: %.3f " "VelocidadY: %.3f\n",
-			cuerpos[i].masa, cuerpos[i].posicionX, cuerpos[i].posicionY, cuerpos[i].velocidadX, cuerpos[i].velocidadY);
+		&(cuerpos[i]).velocidadX, &(cuerpos[i]).velocidadY);
+		cuerpos[i].id = i;
 	}
+
+	imprimirCuerpos(1);
+
 	fclose(fichero);
 }
 
@@ -98,7 +110,7 @@ void calcularAceleracion(){
 			distMod = sqrt(pow(distX,2) + pow(distY,2));
 
 			if(distMod < u){
-				printf("Distancia menor que el umbral.\n");
+				//printf("Distancia menor que el umbral.\n");
 			}else{
 
 				dist3 = pow(distMod, 3);
@@ -120,7 +132,6 @@ void calcularAceleracion(){
 	}
 
 }
-
 
 int main(int argc, char const *argv[])
 {
@@ -150,14 +161,9 @@ int main(int argc, char const *argv[])
 
 	GET_TIME(inicio);
 
+	double t = 0.0;
+
 	calcularAceleracion();
-
-	printf("Aceleraciones iniciales:\n");
-	for(i = 0; i < n; i++){
-		printf("AceleracionX: %.3f, AceleracionY: %.3f\n", cuerpos[i].aceleracionX, cuerpos[i].aceleracionY);
-	}
-
-	int t = 0;
 
 	for(paso = 1; paso <= tp; paso++){
 		for(q = 0; q < n; q++){
@@ -165,20 +171,25 @@ int main(int argc, char const *argv[])
 			cuerpos[q].posicionY += cuerpos[q].velocidadY * delta;
 			cuerpos[q].velocidadX += cuerpos[q].aceleracionX * delta;
 			cuerpos[q].velocidadY += cuerpos[q].aceleracionY * delta;
-
-			printf("PosicionX: %.3f, PosicionY: %.3f, VelocidadX: %.3f, VelocidadY: %.3f\n", cuerpos[q].posicionX, cuerpos[q].posicionY, cuerpos[q].velocidadX, cuerpos[q].velocidadY);
 		}
 		for(q = 0; q < n; q++){
 			calcularAceleracion();
-			printf("Aceleraciones:\n");
-			printf("AceleracionX: %.3f, AceleracionY: %.3f\n", cuerpos[q].aceleracionX, cuerpos[q].aceleracionY);
 		}
+
 		t += delta;
-		printf("%.2d\n", t);
+
+		if(paso%k == 0){
+			printf("%.2f\n", t);
+			imprimirCuerpos(0);
+			printf("\n");
+		}
+
+
 	}
 
 	GET_TIME(fin);
-	printf("\nEjecución en %.2f segundos.\n", fin - inicio);
+	
+	printf("\nEjecución en %f segundos.\n", (fin - inicio));
 
 	free(cuerpos);
 
