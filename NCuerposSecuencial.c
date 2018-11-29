@@ -35,11 +35,7 @@ void leerFichero()
 
 		fscanf(fichero, "%d, %lf, %d, %lf, %d", &n, &delta, &tp, &u, &k);
 
-		printf("N: %d\n", n);
-		printf("Delta: %.2f\n", delta);
-		printf("Tp: %d\n", tp);
-		printf("U: %.2f\n", u);
-		printf("K: %d\n", k);
+		printf("Los datos leídos del fichero son: %d, %.2f, %d, %.2f, %d\n", n, delta, tp, u, k);
 
 		fclose(fichero);
 }
@@ -63,12 +59,13 @@ void leerEntradaTeclado()
 void leerDatosCuerpo()
 {
 	int i;
+	char buffer[1024];
 	if((fichero = fopen(FICHERO,"r")) == NULL) {
 		printf("Error al abrir el archivo");
 		exit(EXIT_FAILURE);
 	}
 
-	fscanf(fichero, "%*[^\n]\n"); /*--- Para situarnos en la segunda línea del archivo ---*/
+	fgets(buffer, 1024, fichero); /*--- Para situarnos en la segunda línea del archivo ---*/
 	for (i = 0; i < n; i++)
 	{
 		fscanf(fichero, "%lf, %lf, %lf, %lf, %lf", &(cuerpos[i]).masa, &(cuerpos[i]).posicionX, &(cuerpos[i]).posicionY,
@@ -177,7 +174,7 @@ int main(int argc, char const *argv[])
 			printf("AceleracionX: %.3f, AceleracionY: %.3f\n", cuerpos[q].aceleracionX, cuerpos[q].aceleracionY);
 		}
 		t += delta;
-		printf("%.2f\n", t);
+		printf("%.2d\n", t);
 	}
 
 	GET_TIME(fin);
