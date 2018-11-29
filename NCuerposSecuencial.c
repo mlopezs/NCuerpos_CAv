@@ -24,10 +24,12 @@ double delta, u;
 struct DatosCuerpo *cuerpos;
 
 void imprimirCuerpos(int m){
-	for(int i = 0; i < n; i++){
+	int i;
+	for(i = 0; i < n; i++){
 		printf("Cuerpo: %d -> ", cuerpos[i].id);
 		if(m) printf("Masa: %.2f\n", cuerpos[i].masa);
-		printf("Pos: (%.10f,%10f), Vel: (%.10f,%.10f), Ace: (%.10f,%.10f)\n", cuerpos[i].id, cuerpos[i].posicionX, cuerpos[i].posicionY, cuerpos[i].velocidadX, cuerpos[i].velocidadY, cuerpos[i].aceleracionX, cuerpos[i].aceleracionY);
+		printf("Pos: (%.10f,%10f), Vel: (%.10f,%.10f), Ace: (%.10f,%.10f)\n", cuerpos[i].posicionX, 
+			cuerpos[i].posicionY, cuerpos[i].velocidadX, cuerpos[i].velocidadY, cuerpos[i].aceleracionX, cuerpos[i].aceleracionY);
 	}
 }
 
@@ -43,11 +45,7 @@ void leerFichero()
 
 	fscanf(fichero, "%d, %lf, %d, %lf, %d", &n, &delta, &tp, &u, &k);
 
-	printf("N: %d\n", n);
-	printf("Delta: %.2f\n", delta);
-	printf("Tp: %d\n", tp);
-	printf("U: %.2f\n", u);
-	printf("K: %d\n", k);
+	printf("Los datos leídos del fichero son: %d, %.2f, %d, %.2f, %d\n", n, delta, tp, u, k);
 
 	fclose(fichero);
 }
@@ -71,12 +69,14 @@ void leerEntradaTeclado()
 void leerDatosCuerpo()
 {
 	int i;
+	char buffer[1024];
+
 	if((fichero = fopen(FICHERO,"r")) == NULL) {
 		printf("Error al abrir el archivo");
 		exit(EXIT_FAILURE);
 	}
 
-	fscanf(fichero, "%*[^\n]\n"); /*--- Para situarnos en la segunda línea del archivo ---*/
+	fgets(buffer, 1024, fichero); /*--- Para situarnos en la segunda línea del archivo ---*/
 	for (i = 0; i < n; i++)
 	{
 		fscanf(fichero, "%lf, %lf, %lf, %lf, %lf", &(cuerpos[i]).masa, &(cuerpos[i]).posicionX, &(cuerpos[i]).posicionY,
@@ -110,7 +110,7 @@ void calcularAceleracion(){
 			distMod = sqrt(pow(distX,2) + pow(distY,2));
 
 			if(distMod < u){
-				//printf("Distancia menor que el umbral.\n");
+				/*printf("Distancia menor que el umbral.\n");*/
 			}else{
 
 				dist3 = pow(distMod, 3);
@@ -157,7 +157,7 @@ int main(int argc, char const *argv[])
 
 	/*---------- Algoritmo ----------*/
 
-	int i, paso, q;
+	int paso, q;
 
 	GET_TIME(inicio);
 
