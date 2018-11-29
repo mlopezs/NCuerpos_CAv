@@ -18,19 +18,24 @@ struct DatosCuerpo {
 	double aceleracionY;
 };
 
-FILE *fichero;
+FILE *fichero, *fp;
 int n, tp, k;
 double delta, u;
 struct DatosCuerpo *cuerpos;
 
-void imprimirCuerpos(int m){
+void imprimirCuerpos(int m, FILE *fp){
 	int i;
+	
 	for(i = 0; i < n; i++){
-		printf("Cuerpo: %d -> ", cuerpos[i].id);
+		fprintf(fp, "Cuerpo: %d -> ", cuerpos[i].id);
 		if(m) printf("Masa: %.2f\n", cuerpos[i].masa);
-		printf("Pos: (%.10f,%10f), Vel: (%.10f,%.10f), Ace: (%.10f,%.10f)\n", cuerpos[i].posicionX, 
-			cuerpos[i].posicionY, cuerpos[i].velocidadX, cuerpos[i].velocidadY, cuerpos[i].aceleracionX, cuerpos[i].aceleracionY);
+		/*fprintf(fp, "Pos: (%.10f,%10f), Vel: (%.10f,%.10f), Ace: (%.10f,%.10f)\n", cuerpos[i].posicionX, 
+			cuerpos[i].posicionY, cuerpos[i].velocidadX, cuerpos[i].velocidadY, cuerpos[i].aceleracionX, cuerpos[i].aceleracionY);*/
+
+		fprintf(fp, "  %f     %f     %f      %f      %f        %f\n", cuerpos[i].posicionX, cuerpos[i].posicionY, cuerpos[i].velocidadX, 
+				cuerpos[i].velocidadY, cuerpos[i].aceleracionX, cuerpos[i].aceleracionY);
 	}
+	fprintf(fp, "\n");
 }
 
 void leerFichero()
@@ -82,9 +87,12 @@ void leerDatosCuerpo()
 		fscanf(fichero, "%lf, %lf, %lf, %lf, %lf", &(cuerpos[i]).masa, &(cuerpos[i]).posicionX, &(cuerpos[i]).posicionY,
 		&(cuerpos[i]).velocidadX, &(cuerpos[i]).velocidadY);
 		cuerpos[i].id = i;
+
+		printf("Los datos leídos son: Masa: %.1f " "PosicionX: %.3f " "PosicionY: %.3f " "VelocidadX: %.3f " "VelocidadY: %.3f\n",
+			cuerpos[i].masa, cuerpos[i].posicionX, cuerpos[i].posicionY, cuerpos[i].velocidadX, cuerpos[i].velocidadY);
 	}
 
-	imprimirCuerpos(1);
+	imprimirCuerpos(1, fp);
 
 	fclose(fichero);
 }
@@ -139,6 +147,12 @@ int main(int argc, char const *argv[])
 	int opcionElegida;
 	double inicio, fin;
 
+
+	fp = fopen( "out_file.txt", "w" ); /*--- Open file for writing */
+	fprintf(fp, "Por cada instante de tiempo y cada cuerpo aparecen: \n");
+	fprintf(fp, "\t      Posicion(x), Posicion(y), Velocidad(x), Velocidad(y), Aceleracion(x), Aceleracion(y)\n \n");
+	fprintf(fp, "0.00\n");
+
 	printf("¿Cómo desea leer los datos para el programa?\n -1. A través de fichero.\n -2. Por entrada de teclado.\n");
 	scanf("%d", &opcionElegida);
 
@@ -153,6 +167,7 @@ int main(int argc, char const *argv[])
 	cuerpos = malloc(sizeof(struct DatosCuerpo)*n);
 
 	/*---------- Lectura de masa, posiciones y velocidades iniciales ------*/
+	
 	leerDatosCuerpo();
 
 	/*---------- Algoritmo ----------*/
@@ -162,7 +177,7 @@ int main(int argc, char const *argv[])
 	GET_TIME(inicio);
 
 	double t = 0.0;
-
+	
 	calcularAceleracion();
 
 	for(paso = 1; paso <= tp; paso++){
@@ -178,9 +193,9 @@ int main(int argc, char const *argv[])
 
 		t += delta;
 
-		if(paso%k == 0){
-			printf("%.2f\n", t);
-			imprimirCuerpos(0);
+		if(paso % k == 0){
+			fprintf(fp, "%.2f\n", t);
+			imprimirCuerpos(0, fp);
 			printf("\n");
 		}
 
