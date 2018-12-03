@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-
+#include <openmpi/mpi.h>
 #include "timer.h"
 
 #define FREAD "datos.dat"
@@ -144,6 +144,16 @@ void calcularAceleracion(){
 
 int main(int argc, char const *argv[]) {
 
+	/* - - - - - Inicialización MPI - - - - - */
+
+	int rank, size;
+
+	MPI_Init(&argc, &argv);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+
+
 	int opcion;
 
 	/* - - - - - PREGUNTA: Lectura de datos. - - - - - */
@@ -235,6 +245,8 @@ int main(int argc, char const *argv[]) {
 	if(opcion == 2) fprintf(fpwrite, "Programa ejecutado en %f segundos.\n", (fin - inicio));
 
 	free(cuerpos);
+	
+	MPI_Finalize();
 
 	return 0;
 }
