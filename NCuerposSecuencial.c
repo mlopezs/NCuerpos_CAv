@@ -38,12 +38,14 @@ void imprimirFichero(){
 }
 
 void imprimirTerminal(int m){
+
 	int i;
 	for(i = 0; i < n; i++){
 		printf("Cuerpo: %d -> ", cuerpos[i].id);
 		if(m) printf("Masa: %.2f\n", cuerpos[i].masa);
 		printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, cuerpos[i].posicionX, 10, cuerpos[i].posicionY, 10, cuerpos[i].velocidadX, 10, cuerpos[i].velocidadY, 10, cuerpos[i].aceleracionX, 10, cuerpos[i].aceleracionY);
 	}
+	
 }
 
 void leerFichero() {
