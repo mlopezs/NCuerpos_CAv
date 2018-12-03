@@ -4,7 +4,8 @@
 #include <math.h>
 #include "timer.h"
 
-#define FICHERO "datos.dat"
+#define FREAD "datos.dat"
+#define FWRITE "out.txt"
 #define G 1
 
 struct DatosCuerpo {
@@ -18,83 +19,82 @@ struct DatosCuerpo {
 	double aceleracionY;
 };
 
-FILE *fichero, *fp;
+FILE *fpread, *fpwrite;
 int n, tp, k;
 double delta, u;
 struct DatosCuerpo *cuerpos;
 
-void imprimirCuerpos(int m, FILE *fp){
-	int i;
-	
-	for(i = 0; i < n; i++){
-		fprintf(fp, "Cuerpo: %d -> ", cuerpos[i].id);
-		if(m) printf("Masa: %.2f\n", cuerpos[i].masa);
-		/*fprintf(fp, "Pos: (%.10f,%10f), Vel: (%.10f,%.10f), Ace: (%.10f,%.10f)\n", cuerpos[i].posicionX, 
-			cuerpos[i].posicionY, cuerpos[i].velocidadX, cuerpos[i].velocidadY, cuerpos[i].aceleracionX, cuerpos[i].aceleracionY);*/
+void imprimirFichero(){
 
-		fprintf(fp, "  %f     %f     %f      %f      %f        %f\n", cuerpos[i].posicionX, cuerpos[i].posicionY, cuerpos[i].velocidadX, 
-				cuerpos[i].velocidadY, cuerpos[i].aceleracionX, cuerpos[i].aceleracionY);
+	int i;
+	for(i = 0; i < n; i++){
+		fprintf(fpwrite, "Cuerpo: %d -> ", cuerpos[i].id);
+		fprintf(fpwrite, "\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, cuerpos[i].posicionX, 10, cuerpos[i].posicionY, 10, cuerpos[i].velocidadX,
+				10, cuerpos[i].velocidadY, 10, cuerpos[i].aceleracionX, 10, cuerpos[i].aceleracionY);
 	}
-	fprintf(fp, "\n");
+
+	fprintf(fpwrite, "\n");
+
 }
 
-void leerFichero()
-{
+void imprimirTerminal(int m){
+	int i;
+	for(i = 0; i < n; i++){
+		printf("Cuerpo: %d -> ", cuerpos[i].id);
+		if(m) printf("Masa: %.2f\n", cuerpos[i].masa);
+		printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, cuerpos[i].posicionX, 10, cuerpos[i].posicionY, 10, cuerpos[i].velocidadX, 10, cuerpos[i].velocidadY, 10, cuerpos[i].aceleracionX, 10, cuerpos[i].aceleracionY);
+	}
+}
 
-	/*---------Lectura del archivo--------*/
+void leerFichero() {
 
-	if((fichero = fopen(FICHERO,"r")) == NULL) {
+	if((fpread = fopen(FREAD,"r")) == NULL) {
 		printf("Error al abrir el archivo");
 		exit(EXIT_FAILURE);
 	}
 
-	fscanf(fichero, "%d, %lf, %d, %lf, %d", &n, &delta, &tp, &u, &k);
+	fscanf(fpread, "%d, %lf, %d, %lf, %d", &n, &delta, &tp, &u, &k);
 
-	printf("Los datos leídos del fichero son: %d, %.2f, %d, %.2f, %d\n", n, delta, tp, u, k);
+	printf("Los datos leídos del fichero son: n=%d, delta=%.2f, tp=%d, u=%.2f, k=%d\n", n, delta, tp, u, k);
 
-	fclose(fichero);
+	fclose(fpread);
 }
 
-void leerEntradaTeclado()
-{
-	printf("Introduzca el número de cuerpos (n) para el programa\n");
+void leerTeclado() {
+
+	printf("Introduzca el número de cuerpos (n) para el programa: \n");
 	scanf("%d", &n);
-	printf("Introduzca el incremento del tiempo en cada paso (delta)\n");
+	printf("Introduzca el incremento del tiempo (delta) en cada paso: \n");
 	scanf("%lff", &delta);
-	printf("Introduzca el número total de pasos (tp)\n");
+	printf("Introduzca el número total de pasos (tp): \n");
 	scanf("%d", &tp);
-	printf("Introduzca la distancia umbral (u)\n");
+	printf("Introduzca la distancia umbral (u): \n");
 	scanf("%lff", &u);
-	printf("Introduzca el k deseado\n");
+	printf("Introduzca el k deseado: \n");
 	scanf("%d", &k);
 
-	printf("Los datos introducidos son: %d, %.2f, %d, %.2f, %d\n", n, delta, tp, u, k);
 }
 
-void leerDatosCuerpo()
-{
-	int i;
-	char buffer[1024];
+void leerDatosCuerpo() {
 
-	if((fichero = fopen(FICHERO,"r")) == NULL) {
-		printf("Error al abrir el archivo");
+	if((fpread = fopen(FREAD,"r")) == NULL) {
+		printf("ERROR. La apertura del archivo falló.");
 		exit(EXIT_FAILURE);
 	}
 
-	fgets(buffer, 1024, fichero); /*--- Para situarnos en la segunda línea del archivo ---*/
-	for (i = 0; i < n; i++)
-	{
-		fscanf(fichero, "%lf, %lf, %lf, %lf, %lf", &(cuerpos[i]).masa, &(cuerpos[i]).posicionX, &(cuerpos[i]).posicionY,
+	// Nos colocamos en la segunda línea
+	char buffer[1024];
+	fgets(buffer, 1024, fpread);
+
+	int i;
+	for (i = 0; i < n; i++) {
+		fscanf(fpread, "%lf, %lf, %lf, %lf, %lf", &(cuerpos[i]).masa, &(cuerpos[i]).posicionX, &(cuerpos[i]).posicionY,
 		&(cuerpos[i]).velocidadX, &(cuerpos[i]).velocidadY);
 		cuerpos[i].id = i;
-
-		printf("Los datos leídos son: Masa: %.1f " "PosicionX: %.3f " "PosicionY: %.3f " "VelocidadX: %.3f " "VelocidadY: %.3f\n",
-			cuerpos[i].masa, cuerpos[i].posicionX, cuerpos[i].posicionY, cuerpos[i].velocidadX, cuerpos[i].velocidadY);
 	}
 
-	imprimirCuerpos(1, fp);
+	fclose(fpread);
 
-	fclose(fichero);
 }
 
 void calcularAceleracion(){
@@ -117,9 +117,7 @@ void calcularAceleracion(){
 			distY = cuerpos[q].posicionY - cuerpos[p].posicionY;
 			distMod = sqrt(pow(distX,2) + pow(distY,2));
 
-			if(distMod < u){
-				/*printf("Distancia menor que el umbral.\n");*/
-			}else{
+			if(distMod >= u){ // Control umbral
 
 				dist3 = pow(distMod, 3);
 
@@ -141,52 +139,72 @@ void calcularAceleracion(){
 
 }
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
 
-	int opcionElegida;
-	double inicio, fin;
+	int opcion;
 
+	/* - - - - - PREGUNTA: Lectura de datos. - - - - - */
 
-	fp = fopen( "out_file.txt", "w" ); /*--- Open file for writing */
-	fprintf(fp, "Por cada instante de tiempo y cada cuerpo aparecen: \n");
-	fprintf(fp, "\t      Posicion(x), Posicion(y), Velocidad(x), Velocidad(y), Aceleracion(x), Aceleracion(y)\n \n");
-	fprintf(fp, "0.00\n");
+	printf("¿Cómo debe obtener el programa los datos de entrada?\n (1) A través del fichero \"datos.dat\".\n (2) Por teclado.\n");
+	scanf("%d", &opcion);
 
-	printf("¿Cómo desea leer los datos para el programa?\n -1. A través de fichero.\n -2. Por entrada de teclado.\n");
-	scanf("%d", &opcionElegida);
-
-	if (opcionElegida == 1)
-	{
-		leerFichero();
-	} else {
-		leerEntradaTeclado();
+	while(opcion != 1 && opcion != 2){
+		printf("ERROR. Opción no disponible.\n Vuelva a introducir el dato.\n (1) A través del fichero \"datos.dat\".\n (2) Por teclado.\n");
+		scanf("%d", &opcion);
 	}
 
-	/*---------- Reserva de espacio para los n cuerpos ---------*/
-	cuerpos = malloc(sizeof(struct DatosCuerpo)*n);
+	if(opcion == 1) leerFichero();
+	else leerTeclado();
 
-	/*---------- Lectura de masa, posiciones y velocidades iniciales ------*/
-	
+	/* - - - - - PREGUNTA: Mostrar salida. - - - - - */
+
+	printf("\n¿Cómo desea visualizar los datos resultantes del programa?\n (1) A través de la terminal.\n (2) En un fichero de texto.\n");
+	scanf("%d", &opcion);
+
+	while(opcion != 1 && opcion != 2){
+		printf("ERROR. Opción no disponible.\n Vuelva a introducir el dato.\n (1) A través de la terminal.\n (2) En un fichero de texto.\n");
+		scanf("%d", &opcion);
+	}
+
+	/* - - - - - Comienzo del programa - - - - - */
+
+	if(opcion == 2){
+		fpwrite = fopen( FWRITE, "w" );
+		fprintf(fpwrite, "Por cada instante de tiempo y cada cuerpo aparecen: \n");
+		fprintf(fpwrite, "            \t%*s \t%*s \t%*s \t%*s \t%*s \t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
+	}
+
+	// Reserva de memoria para 'n' cuerpos
+	cuerpos = malloc( sizeof(struct DatosCuerpo) * n);
+
+	// Lectura de datos de cada cuerpo (Siempre por fichero)
 	leerDatosCuerpo();
 
-	/*---------- Algoritmo ----------*/
+	// Muestra de los datos
+	printf("\nDescripción de los cuerpos:\n");
+	imprimirTerminal(1);
+
+	/* - - - - - Comienzo del algoritmo - - - - - */
 
 	int paso, q;
+	double inicio, fin;
+	int flag = 1;
 
 	GET_TIME(inicio);
 
 	double t = 0.0;
-	
+
 	calcularAceleracion();
 
 	for(paso = 1; paso <= tp; paso++){
+
 		for(q = 0; q < n; q++){
 			cuerpos[q].posicionX += cuerpos[q].velocidadX * delta;
 			cuerpos[q].posicionY += cuerpos[q].velocidadY * delta;
 			cuerpos[q].velocidadX += cuerpos[q].aceleracionX * delta;
 			cuerpos[q].velocidadY += cuerpos[q].aceleracionY * delta;
 		}
+
 		for(q = 0; q < n; q++){
 			calcularAceleracion();
 		}
@@ -194,17 +212,24 @@ int main(int argc, char const *argv[])
 		t += delta;
 
 		if(paso % k == 0){
-			fprintf(fp, "%.2f\n", t);
-			imprimirCuerpos(0, fp);
-			printf("\n");
+			if(opcion == 1){
+				if(flag){
+					 printf("\n            \t%*s\t%*s\t%*s\t%*s\t%*s\t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
+					 flag = 0;
+				 }
+	 			printf("%.2f\n", t);
+				imprimirTerminal(0);
+			}else{
+				fprintf(fpwrite, "%.2f\n", t);
+				imprimirFichero();
+			}
 		}
-
-
 	}
 
 	GET_TIME(fin);
-	
+
 	printf("\nEjecución en %f segundos.\n", (fin - inicio));
+	if(opcion == 2) fprintf(fpwrite, "Programa ejecutado en %f segundos.\n", (fin - inicio));
 
 	free(cuerpos);
 
