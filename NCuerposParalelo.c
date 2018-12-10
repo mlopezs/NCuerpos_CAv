@@ -245,7 +245,7 @@ int main(int argc, char const *argv[]) {
 	if(opcion == 2) fprintf(fpwrite, "Programa ejecutado en %f segundos.\n", (fin - inicio));
 
 	free(cuerpos);
-	
+
 	MPI_Finalize();
 
 	return 0;
