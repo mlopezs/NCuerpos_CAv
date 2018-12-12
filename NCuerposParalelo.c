@@ -9,7 +9,7 @@
 #define FWRITE "out.txt"
 #define G 1
 
-struct DatosCuerpo {
+typedef struct Cuerpo_s {
 	int id;
 	double masa;
 	double posicionX;
@@ -18,7 +18,8 @@ struct DatosCuerpo {
 	double velocidadY;
 	double aceleracionX;
 	double aceleracionY;
-};
+} Cuerpo;
+Cuerpo *cuerpos;
 
 typedef struct Datos_s {
 	int n;
@@ -27,24 +28,12 @@ typedef struct Datos_s {
 	double delta;
 	double u;
 } Datos;
-Datos datos;
-
-// typedef struct DatosCuerpos_s {
-// 	int id;
-// 	double masa;
-// 	double posX;
-// 	double posY;
-// 	double velX;
-// 	double velY;
-// 	double accX;
-// 	double acY;
-// } DatosCuerpos;
-// DatosCuerpos datoscuerpos;
+Datos *datos;
 
 FILE *fpread, *fpwrite;
 int n, tp, k;
 double delta, u;
-struct DatosCuerpo *cuerpos;
+//struct DatosCuerpo *cuerpos;
 
 
 void imprimirFichero(){
@@ -199,13 +188,11 @@ int main(int argc, char *argv[]) {
 			if(opcion == 1) leerFichero();
 			else leerTeclado();
 
-			datos.n = n;
-			datos.tp = tp;
-			datos.k = k;
-			datos.delta = delta;
-			datos.u = u;
-
-			printf("%d\n", datos.n);
+			datos->n = n;
+			datos->tp = tp;
+			datos->k = k;
+			datos->delta = delta;
+			datos->u = u;
 
 			/* - - - - - PREGUNTA: Mostrar salida. - - - - - */
 
@@ -227,7 +214,7 @@ int main(int argc, char *argv[]) {
 			}
 
 			// Reserva de memoria para 'n' cuerpos
-			cuerpos = malloc( sizeof(struct DatosCuerpo) * n);
+			cuerpos = malloc( sizeof(struct Cuerpo_s) * n);
 
 			// Lectura de datos de cada cuerpo (Siempre por fichero)
 			leerDatosCuerpo();
