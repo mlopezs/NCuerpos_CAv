@@ -9,56 +9,53 @@
 #define FWRITE "out.txt"
 #define G 1
 
-typedef struct Cuerpo_s {
-	int id;
-	double masa;
-	double posicionX;
-	double posicionY;
-	double velocidadX;
-	double velocidadY;
-	double aceleracionX;
-	double aceleracionY;
-} Cuerpo;
-Cuerpo *cuerpos;
-
-typedef struct Datos_s {
+struct Datos {
 	int n;
 	int tp;
 	int k;
 	double delta;
 	double u;
-} Datos;
-Datos *datos;
+};
+
+struct Cuerpo {
+	int id;
+	double masa;
+	double posX;
+	double posY;
+	double velX;
+	double velY;
+	double accX;
+	double accY;
+};
+
+struct Datos datos;
+struct Cuerpo *cuerpos;
 
 FILE *fpread, *fpwrite;
-int n, tp, k;
-double delta, u;
-//struct DatosCuerpo *cuerpos;
 
-
-void imprimirFichero(){
+void imprimirFichero(){/*
 
 	int i;
 	for(i = 0; i < n; i++){
 		fprintf(fpwrite, "Cuerpo: %d -> ", cuerpos[i].id);
-		fprintf(fpwrite, "\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, cuerpos[i].posicionX, 10, cuerpos[i].posicionY, 10, cuerpos[i].velocidadX,
-				10, cuerpos[i].velocidadY, 10, cuerpos[i].aceleracionX, 10, cuerpos[i].aceleracionY);
+		fprintf(fpwrite, "\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, cuerpos[i].posX, 10, cuerpos[i].posY, 10, cuerpos[i].velX,
+				10, cuerpos[i].velY, 10, cuerpos[i].accX, 10, cuerpos[i].accY);
 	}
 
 	fprintf(fpwrite, "\n");
 
-}
+*/}
 
-void imprimirTerminal(int m){
+void imprimirTerminal(int m){/*
 
 	int i;
 	for(i = 0; i < n; i++){
 		printf("Cuerpo: %d -> ", cuerpos[i].id);
 		if(m) printf("Masa: %.2f\n", cuerpos[i].masa);
-		printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, cuerpos[i].posicionX, 10, cuerpos[i].posicionY, 10, cuerpos[i].velocidadX, 10, cuerpos[i].velocidadY, 10, cuerpos[i].aceleracionX, 10, cuerpos[i].aceleracionY);
+		printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, cuerpos[i].posX, 10, cuerpos[i].posY, 10, cuerpos[i].velX, 10, cuerpos[i].velY, 10, cuerpos[i].accX, 10, cuerpos[i].accY);
 	}
 
-}
+*/}
 
 void leerFichero() {
 
@@ -67,25 +64,26 @@ void leerFichero() {
 		exit(EXIT_FAILURE);
 	}
 
-	fscanf(fpread, "%d, %lf, %d, %lf, %d", &n, &delta, &tp, &u, &k);
+	fscanf(fpread, "%d, %lf, %d, %lf, %d", &datos.n, &datos.delta, &datos.tp, &datos.u, &datos.k);
 
-	printf("Los datos leídos del fichero son: n=%d, delta=%.2f, tp=%d, u=%.2f, k=%d\n", n, delta, tp, u, k);
+	printf("Los datos leídos del fichero son: n=%d, delta=%.2f, tp=%d, u=%.2f, k=%d\n", datos.n, datos.delta, datos.tp, datos.u, datos.k);
 
 	fclose(fpread);
+
 }
 
 void leerTeclado() {
 
 	printf("Introduzca el número de cuerpos (n) para el programa: \n");
-	scanf("%d", &n);
+	scanf("%d", &datos.n);
 	printf("Introduzca el incremento del tiempo (delta) en cada paso: \n");
-	scanf("%lff", &delta);
+	scanf("%lff", &datos.delta);
 	printf("Introduzca el número total de pasos (tp): \n");
-	scanf("%d", &tp);
+	scanf("%d", &datos.tp);
 	printf("Introduzca la distancia umbral (u): \n");
-	scanf("%lff", &u);
+	scanf("%lff", &datos.u);
 	printf("Introduzca el k deseado: \n");
-	scanf("%d", &k);
+	scanf("%d", &datos.k);
 
 }
 
@@ -101,9 +99,8 @@ void leerDatosCuerpo() {
 	fgets(buffer, 1024, fpread);
 
 	int i;
-	for (i = 0; i < n; i++) {
-		fscanf(fpread, "%lf, %lf, %lf, %lf, %lf", &(cuerpos[i]).masa, &(cuerpos[i]).posicionX, &(cuerpos[i]).posicionY,
-		&(cuerpos[i]).velocidadX, &(cuerpos[i]).velocidadY);
+	for (i = 0; i < datos.n; i++) {
+		fscanf(fpread, "%lf, %lf, %lf, %lf, %lf", &(cuerpos[i]).masa, &(cuerpos[i]).posX, &(cuerpos[i]).posY, &(cuerpos[i]).velX, &(cuerpos[i]).velY);
 		cuerpos[i].id = i;
 	}
 
@@ -112,11 +109,11 @@ void leerDatosCuerpo() {
 }
 
 void calcularAceleracion(){
-
+	/*
 	int i;
 	for(i = 0; i < n; i++){
-		cuerpos[i].aceleracionX = 0.0;
-		cuerpos[i].aceleracionY = 0.0;
+		cuerpos[i].accX = 0.0;
+		cuerpos[i].accY = 0.0;
 	}
 
 	int q, p;
@@ -127,30 +124,30 @@ void calcularAceleracion(){
 	for(q = 0; q < n; q++){
 		for(p = q+1; p < n; p++){
 
-			distX = cuerpos[q].posicionX - cuerpos[p].posicionX;
-			distY = cuerpos[q].posicionY - cuerpos[p].posicionY;
+			distX = cuerpos[q].posX - cuerpos[p].posX;
+			distY = cuerpos[q].posY - cuerpos[p].posY;
 			distMod = sqrt(pow(distX,2) + pow(distY,2));
 
 			if(distMod >= u){ // Control umbral
 
 				dist3 = pow(distMod, 3);
 
-				distX = cuerpos[p].posicionX - cuerpos[q].posicionX;
-				distY = cuerpos[p].posicionY - cuerpos[q].posicionY;
+				distX = cuerpos[p].posX - cuerpos[q].posX;
+				distY = cuerpos[p].posY - cuerpos[q].posY;
 
 				accX = (G * distX) / dist3;
 				accY = (G * distY) / dist3;
 
-				cuerpos[q].aceleracionX += accX * cuerpos[p].masa;
-				cuerpos[q].aceleracionY += accY * cuerpos[p].masa;
+				cuerpos[q].accX += accX * cuerpos[p].masa;
+				cuerpos[q].accY += accY * cuerpos[p].masa;
 
-				cuerpos[p].aceleracionX += accX * -cuerpos[q].masa;
-				cuerpos[p].aceleracionY += accY * -cuerpos[q].masa;
+				cuerpos[p].accX += accX * -cuerpos[q].masa;
+				cuerpos[p].accY += accY * -cuerpos[q].masa;
 
 			}
 		}
 	}
-
+	*/
 }
 
 int main(int argc, char *argv[]) {
@@ -166,7 +163,7 @@ int main(int argc, char *argv[]) {
 	// Creamos un MPI datatype para los datos
 	MPI_Datatype MPI_Datos;
 	int blcklen[2] = {3, 2};
-	MPI_Aint displ[2] = {offsetof(Datos, n), offsetof(Datos, delta)};
+	MPI_Aint displ[2] = {offsetof(struct Datos, n), offsetof(struct Datos, delta)};
 	MPI_Datatype types[2] = {MPI_INT, MPI_DOUBLE};
 	MPI_Type_create_struct(2, blcklen, displ, types, &MPI_Datos);
 	MPI_Type_commit(&MPI_Datos);
@@ -188,11 +185,14 @@ int main(int argc, char *argv[]) {
 			if(opcion == 1) leerFichero();
 			else leerTeclado();
 
-			datos->n = n;
-			datos->tp = tp;
-			datos->k = k;
-			datos->delta = delta;
-			datos->u = u;
+	}
+
+	// Reserva de memoria para 'n' cuerpos
+	cuerpos = malloc( sizeof(struct Cuerpo) * datos.n);
+
+	if(rank == 0){
+
+			int opcion;
 
 			/* - - - - - PREGUNTA: Mostrar salida. - - - - - */
 
@@ -213,15 +213,13 @@ int main(int argc, char *argv[]) {
 				fprintf(fpwrite, "            \t%*s \t%*s \t%*s \t%*s \t%*s \t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
 			}
 
-			// Reserva de memoria para 'n' cuerpos
-			cuerpos = malloc( sizeof(struct Cuerpo_s) * n);
-
 			// Lectura de datos de cada cuerpo (Siempre por fichero)
 			leerDatosCuerpo();
 
 			// Muestra de los datos
 			printf("\nDescripción de los cuerpos:\n");
 			imprimirTerminal(1);
+
 
 			// Enviar datos a los demas procesos
 			MPI_Bcast(&datos, 1, MPI_Datos, 0, MPI_COMM_WORLD);
@@ -244,10 +242,10 @@ int main(int argc, char *argv[]) {
 			for(paso = 1; paso <= tp; paso++){
 
 				for(q = 0; q < n; q++){
-					cuerpos[q].posicionX += cuerpos[q].velocidadX * delta;
-					cuerpos[q].posicionY += cuerpos[q].velocidadY * delta;
-					cuerpos[q].velocidadX += cuerpos[q].aceleracionX * delta;
-					cuerpos[q].velocidadY += cuerpos[q].aceleracionY * delta;
+					cuerpos[q].posX += cuerpos[q].velX * delta;
+					cuerpos[q].posY += cuerpos[q].velY * delta;
+					cuerpos[q].velX += cuerpos[q].accX * delta;
+					cuerpos[q].velY += cuerpos[q].accY * delta;
 				}
 
 				for(q = 0; q < n; q++){
@@ -280,33 +278,45 @@ int main(int argc, char *argv[]) {
 
 			// Fin main
 
-	}
-
-	// Creamos un MPI datatype para los datos de cuerpos
-	// MPI_Datatype MPI_DatosCuerpos;
-	// int blcklen2[2] = {1, 7};
-	// MPI_Aint displ2[2] = {offsetof(DatosCuerpos, id), offsetof(DatosCuerpos, posX)};
-	// MPI_Datatype types2[2] = {MPI_INT, MPI_DOUBLE};
-	// MPI_Type_create_struct(n, blcklen2, displ2, types2, &MPI_DatosCuerpos);
-	// MPI_Type_commit(&MPI_DatosCuerpos);
-
-	// datoscuerpos = malloc( sizeof(struct DatosCuerpo) * n);
-	// //datoscuerpos = malloc( sizeof(struct DatosCuerpos) * n);
-	//
-	// if(rank == 0){
-	// 	datoscuerpos[0]->id = cuerpos[0].id;
-	// 	MPI_Bcast(&datoscuerpos, 1, MPI_DatosCuerpos, 0, MPI_COMM_WORLD);
-	// }
-
-	MPI_Barrier(MPI_COMM_WORLD);
-
-	if(rank > 0){ // Resto de procesos
+	} else { // Procesos con rango > 0
 
 		// Reciben los datos del proceso 0
 		MPI_Bcast(&datos, 1, MPI_Datos, 0, MPI_COMM_WORLD);
 
+	}
+
+	// Creamos un MPI datatype para los datos de cuerpos
+	MPI_Datatype MPI_Cuerpos;
+	int blcklen2[2] = {1, 7};
+	MPI_Aint displ2[2] = {offsetof(struct Cuerpo, id), offsetof(struct Cuerpo, posX)};
+	MPI_Datatype types2[2] = {MPI_INT, MPI_DOUBLE};
+	MPI_Type_create_struct(datos.n, blcklen2, displ2, types2, &MPI_Cuerpos);
+	MPI_Type_commit(&MPI_Cuerpos);
+
+	if(rank == 0){
+
+		MPI_Bcast(&cuerpos, 1, MPI_Cuerpos, 0, MPI_COMM_WORLD);
+
+	} else {
+
 		// Recibe los datos de los cuerpos del proceso 0
-		//MPI_Bcast(&datoscuerpos, 1, MPI_DatosCuerpos, 0, MPI_COMM_WORLD);
+		MPI_Bcast(&cuerpos, 1, MPI_Cuerpos, 0, MPI_COMM_WORLD);
+
+		/*
+
+
+
+
+		Comprobar si se envia y recibe bien el cuerpos
+
+
+
+
+
+
+
+		*/
+
 	}
 
 	MPI_Finalize();
