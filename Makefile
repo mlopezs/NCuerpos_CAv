@@ -1,7 +1,13 @@
-all: compile run
+all: compile-par
 
-compile:
+compile-sec:
 	gcc NCuerposSecuencial.c -o NCuerposSecuencial -lm -Wall
 
-run:
+run-sec:
 	./NCuerposSecuencial 
+
+compile-par:
+	mpicc NCuerposParalelo.c -o NCuerposParalelo -lm -Wall
+
+run-par:
+	mpirun -np 2 NCuerposParalelo 

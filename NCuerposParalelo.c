@@ -20,10 +20,32 @@ struct DatosCuerpo {
 	double aceleracionY;
 };
 
+typedef struct Datos_s {
+	int n;
+	int tp;
+	int k;
+	double delta;
+	double u;
+} Datos;
+Datos datos;
+
+// typedef struct DatosCuerpos_s {
+// 	int id;
+// 	double masa;
+// 	double posX;
+// 	double posY;
+// 	double velX;
+// 	double velY;
+// 	double accX;
+// 	double acY;
+// } DatosCuerpos;
+// DatosCuerpos datoscuerpos;
+
 FILE *fpread, *fpwrite;
 int n, tp, k;
 double delta, u;
 struct DatosCuerpo *cuerpos;
+
 
 void imprimirFichero(){
 
@@ -142,7 +164,7 @@ void calcularAceleracion(){
 
 }
 
-int main(int argc, char const *argv[]) {
+int main(int argc, char *argv[]) {
 
 	/* - - - - - Inicialización MPI - - - - - */
 
@@ -152,99 +174,153 @@ int main(int argc, char const *argv[]) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
 
+	// Creamos un MPI datatype para los datos
+	MPI_Datatype MPI_Datos;
+	int blcklen[2] = {3, 2};
+	MPI_Aint displ[2] = {offsetof(Datos, n), offsetof(Datos, delta)};
+	MPI_Datatype types[2] = {MPI_INT, MPI_DOUBLE};
+	MPI_Type_create_struct(2, blcklen, displ, types, &MPI_Datos);
+	MPI_Type_commit(&MPI_Datos);
 
+	if(rank == 0){ // Proceso con rango 0
 
-	int opcion;
+			int opcion;
 
-	/* - - - - - PREGUNTA: Lectura de datos. - - - - - */
+			/* - - - - - PREGUNTA: Lectura de datos. - - - - - */
 
-	printf("¿Cómo debe obtener el programa los datos de entrada?\n (1) A través del fichero \"datos.dat\".\n (2) Por teclado.\n");
-	scanf("%d", &opcion);
+			printf("¿Cómo debe obtener el programa los datos de entrada?\n (1) A través del fichero \"datos.dat\".\n (2) Por teclado.\n");
+			scanf("%d", &opcion);
 
-	while(opcion != 1 && opcion != 2){
-		printf("ERROR. Opción no disponible.\n Vuelva a introducir el dato.\n (1) A través del fichero \"datos.dat\".\n (2) Por teclado.\n");
-		scanf("%d", &opcion);
-	}
-
-	if(opcion == 1) leerFichero();
-	else leerTeclado();
-
-	/* - - - - - PREGUNTA: Mostrar salida. - - - - - */
-
-	printf("\n¿Cómo desea visualizar los datos resultantes del programa?\n (1) A través de la terminal.\n (2) En un fichero de texto.\n");
-	scanf("%d", &opcion);
-
-	while(opcion != 1 && opcion != 2){
-		printf("ERROR. Opción no disponible.\n Vuelva a introducir el dato.\n (1) A través de la terminal.\n (2) En un fichero de texto.\n");
-		scanf("%d", &opcion);
-	}
-
-	/* - - - - - Comienzo del programa - - - - - */
-
-	if(opcion == 2){
-		fpwrite = fopen( FWRITE, "w" );
-		fprintf(fpwrite, "Por cada instante de tiempo y cada cuerpo aparecen: \n");
-		fprintf(fpwrite, "            \t%*s \t%*s \t%*s \t%*s \t%*s \t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
-	}
-
-	// Reserva de memoria para 'n' cuerpos
-	cuerpos = malloc( sizeof(struct DatosCuerpo) * n);
-
-	// Lectura de datos de cada cuerpo (Siempre por fichero)
-	leerDatosCuerpo();
-
-	// Muestra de los datos
-	printf("\nDescripción de los cuerpos:\n");
-	imprimirTerminal(1);
-
-	/* - - - - - Comienzo del algoritmo - - - - - */
-
-	int paso, q;
-	double inicio, fin;
-	int flag = 1;
-
-	GET_TIME(inicio);
-
-	double t = 0.0;
-
-	calcularAceleracion();
-
-	for(paso = 1; paso <= tp; paso++){
-
-		for(q = 0; q < n; q++){
-			cuerpos[q].posicionX += cuerpos[q].velocidadX * delta;
-			cuerpos[q].posicionY += cuerpos[q].velocidadY * delta;
-			cuerpos[q].velocidadX += cuerpos[q].aceleracionX * delta;
-			cuerpos[q].velocidadY += cuerpos[q].aceleracionY * delta;
-		}
-
-		for(q = 0; q < n; q++){
-			calcularAceleracion();
-		}
-
-		t += delta;
-
-		if(paso % k == 0){
-			if(opcion == 1){
-				if(flag){
-					 printf("\n            \t%*s\t%*s\t%*s\t%*s\t%*s\t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
-					 flag = 0;
-				 }
-	 			printf("%.2f\n", t);
-				imprimirTerminal(0);
-			}else{
-				fprintf(fpwrite, "%.2f\n", t);
-				imprimirFichero();
+			while(opcion != 1 && opcion != 2){
+				printf("ERROR. Opción no disponible.\n Vuelva a introducir el dato.\n (1) A través del fichero \"datos.dat\".\n (2) Por teclado.\n");
+				scanf("%d", &opcion);
 			}
-		}
+
+			if(opcion == 1) leerFichero();
+			else leerTeclado();
+
+			datos.n = n;
+			datos.tp = tp;
+			datos.k = k;
+			datos.delta = delta;
+			datos.u = u;
+
+			printf("%d\n", datos.n);
+
+			/* - - - - - PREGUNTA: Mostrar salida. - - - - - */
+
+			printf("\n¿Cómo desea visualizar los datos resultantes del programa?\n (1) A través de la terminal.\n (2) En un fichero de texto.\n");
+			scanf("%d", &opcion);
+
+			while(opcion != 1 && opcion != 2){
+				printf("ERROR. Opción no disponible.\n Vuelva a introducir el dato.\n (1) A través de la terminal.\n (2) En un fichero de texto.\n");
+				scanf("%d", &opcion);
+			}
+
+
+			/* - - - - - Comienzo del programa - - - - - */
+
+			if(opcion == 2){
+				fpwrite = fopen( FWRITE, "w" );
+				fprintf(fpwrite, "Por cada instante de tiempo y cada cuerpo aparecen: \n");
+				fprintf(fpwrite, "            \t%*s \t%*s \t%*s \t%*s \t%*s \t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
+			}
+
+			// Reserva de memoria para 'n' cuerpos
+			cuerpos = malloc( sizeof(struct DatosCuerpo) * n);
+
+			// Lectura de datos de cada cuerpo (Siempre por fichero)
+			leerDatosCuerpo();
+
+			// Muestra de los datos
+			printf("\nDescripción de los cuerpos:\n");
+			imprimirTerminal(1);
+
+			// Enviar datos a los demas procesos
+			MPI_Bcast(&datos, 1, MPI_Datos, 0, MPI_COMM_WORLD);
+
+			// Enviar los datos de los cuerpos a los demas procesos
+
+
+			/* - - - - - Comienzo del algoritmo - - - - - */
+			/*
+			int paso, q;
+			double inicio, fin;
+			int flag = 1;
+
+			GET_TIME(inicio);
+
+			double t = 0.0;
+
+			calcularAceleracion();
+
+			for(paso = 1; paso <= tp; paso++){
+
+				for(q = 0; q < n; q++){
+					cuerpos[q].posicionX += cuerpos[q].velocidadX * delta;
+					cuerpos[q].posicionY += cuerpos[q].velocidadY * delta;
+					cuerpos[q].velocidadX += cuerpos[q].aceleracionX * delta;
+					cuerpos[q].velocidadY += cuerpos[q].aceleracionY * delta;
+				}
+
+				for(q = 0; q < n; q++){
+					calcularAceleracion();
+				}
+
+				t += delta;
+
+				if(paso % k == 0){
+					if(opcion == 1){
+						if(flag){
+							 printf("\n            \t%*s\t%*s\t%*s\t%*s\t%*s\t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
+							 flag = 0;
+						 }
+			 			printf("%.2f\n", t);
+						imprimirTerminal(0);
+					}else{
+						fprintf(fpwrite, "%.2f\n", t);
+						imprimirFichero();
+					}
+				}
+			}
+
+			GET_TIME(fin);
+
+			printf("\nEjecución en %f segundos.\n", (fin - inicio));
+			if(opcion == 2) fprintf(fpwrite, "Programa ejecutado en %f segundos.\n", (fin - inicio));
+			*/
+			free(cuerpos);
+
+			// Fin main
+
 	}
 
-	GET_TIME(fin);
+	// Creamos un MPI datatype para los datos de cuerpos
+	// MPI_Datatype MPI_DatosCuerpos;
+	// int blcklen2[2] = {1, 7};
+	// MPI_Aint displ2[2] = {offsetof(DatosCuerpos, id), offsetof(DatosCuerpos, posX)};
+	// MPI_Datatype types2[2] = {MPI_INT, MPI_DOUBLE};
+	// MPI_Type_create_struct(n, blcklen2, displ2, types2, &MPI_DatosCuerpos);
+	// MPI_Type_commit(&MPI_DatosCuerpos);
 
-	printf("\nEjecución en %f segundos.\n", (fin - inicio));
-	if(opcion == 2) fprintf(fpwrite, "Programa ejecutado en %f segundos.\n", (fin - inicio));
+	// datoscuerpos = malloc( sizeof(struct DatosCuerpo) * n);
+	// //datoscuerpos = malloc( sizeof(struct DatosCuerpos) * n);
+	//
+	// if(rank == 0){
+	// 	datoscuerpos[0]->id = cuerpos[0].id;
+	// 	MPI_Bcast(&datoscuerpos, 1, MPI_DatosCuerpos, 0, MPI_COMM_WORLD);
+	// }
 
-	free(cuerpos);
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	if(rank > 0){ // Resto de procesos
+
+		// Reciben los datos del proceso 0
+		MPI_Bcast(&datos, 1, MPI_Datos, 0, MPI_COMM_WORLD);
+
+		// Recibe los datos de los cuerpos del proceso 0
+		//MPI_Bcast(&datoscuerpos, 1, MPI_DatosCuerpos, 0, MPI_COMM_WORLD);
+	}
 
 	MPI_Finalize();
 
