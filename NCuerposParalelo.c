@@ -33,10 +33,10 @@ struct Cuerpo *cuerpos;
 
 FILE *fpread, *fpwrite;
 
-void imprimirFichero(){/*
+void imprimirFichero(){
 
 	int i;
-	for(i = 0; i < n; i++){
+	for(i = 0; i < datos.n; i++){
 		fprintf(fpwrite, "Cuerpo: %d -> ", cuerpos[i].id);
 		fprintf(fpwrite, "\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, cuerpos[i].posX, 10, cuerpos[i].posY, 10, cuerpos[i].velX,
 				10, cuerpos[i].velY, 10, cuerpos[i].accX, 10, cuerpos[i].accY);
@@ -44,18 +44,18 @@ void imprimirFichero(){/*
 
 	fprintf(fpwrite, "\n");
 
-*/}
+}
 
-void imprimirTerminal(int m){/*
+void imprimirTerminal(int m){
 
 	int i;
-	for(i = 0; i < n; i++){
+	for(i = 0; i < datos.n; i++){
 		printf("Cuerpo: %d -> ", cuerpos[i].id);
 		if(m) printf("Masa: %.2f\n", cuerpos[i].masa);
 		printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, cuerpos[i].posX, 10, cuerpos[i].posY, 10, cuerpos[i].velX, 10, cuerpos[i].velY, 10, cuerpos[i].accX, 10, cuerpos[i].accY);
 	}
 
-*/}
+}
 
 void leerFichero() {
 
@@ -109,9 +109,9 @@ void leerDatosCuerpo() {
 }
 
 void calcularAceleracion(){
-	/*
+
 	int i;
-	for(i = 0; i < n; i++){
+	for(i = 0; i < datos.n; i++){
 		cuerpos[i].accX = 0.0;
 		cuerpos[i].accY = 0.0;
 	}
@@ -121,14 +121,14 @@ void calcularAceleracion(){
 	double dist3;
 	double accX, accY;
 
-	for(q = 0; q < n; q++){
-		for(p = q+1; p < n; p++){
+	for(q = 0; q < datos.n; q++){
+		for(p = q+1; p < datos.n; p++){
 
 			distX = cuerpos[q].posX - cuerpos[p].posX;
 			distY = cuerpos[q].posY - cuerpos[p].posY;
 			distMod = sqrt(pow(distX,2) + pow(distY,2));
 
-			if(distMod >= u){ // Control umbral
+			if(distMod >= datos.u){ // Control umbral
 
 				dist3 = pow(distMod, 3);
 
@@ -147,7 +147,7 @@ void calcularAceleracion(){
 			}
 		}
 	}
-	*/
+
 }
 
 int main(int argc, char *argv[]) {
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
 
 
 			/* - - - - - Comienzo del algoritmo - - - - - */
-			/*
+
 			int paso, q;
 			double inicio, fin;
 			int flag = 1;
@@ -239,22 +239,22 @@ int main(int argc, char *argv[]) {
 
 			calcularAceleracion();
 
-			for(paso = 1; paso <= tp; paso++){
+			for(paso = 1; paso <= datos.tp; paso++){
 
-				for(q = 0; q < n; q++){
-					cuerpos[q].posX += cuerpos[q].velX * delta;
-					cuerpos[q].posY += cuerpos[q].velY * delta;
-					cuerpos[q].velX += cuerpos[q].accX * delta;
-					cuerpos[q].velY += cuerpos[q].accY * delta;
+				for(q = 0; q < datos.n; q++){
+					cuerpos[q].posX += cuerpos[q].velX * datos.delta;
+					cuerpos[q].posY += cuerpos[q].velY * datos.delta;
+					cuerpos[q].velX += cuerpos[q].accX * datos.delta;
+					cuerpos[q].velY += cuerpos[q].accY * datos.delta;
 				}
 
-				for(q = 0; q < n; q++){
+				for(q = 0; q < datos.n; q++){
 					calcularAceleracion();
 				}
 
-				t += delta;
+				t += datos.delta;
 
-				if(paso % k == 0){
+				if(paso % datos.k == 0){
 					if(opcion == 1){
 						if(flag){
 							 printf("\n            \t%*s\t%*s\t%*s\t%*s\t%*s\t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
@@ -273,7 +273,7 @@ int main(int argc, char *argv[]) {
 
 			printf("\nEjecución en %f segundos.\n", (fin - inicio));
 			if(opcion == 2) fprintf(fpwrite, "Programa ejecutado en %f segundos.\n", (fin - inicio));
-			*/
+
 			free(cuerpos);
 
 			// Fin main
