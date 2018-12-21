@@ -87,7 +87,7 @@ void leerTeclado() {
 
 }
 
-void leerDatosCuerpo() {
+void leerDatosCuerpo(int tot) {
 
 	if((fpread = fopen(FREAD,"r")) == NULL) {
 		printf("ERROR. La apertura del archivo falló.");
@@ -104,11 +104,22 @@ void leerDatosCuerpo() {
 		cuerpos[i].id = i;
 	}
 
+	for(int j = datos.n; j < tot; j++){
+		cuerpos[j].id = -1;
+		cuerpos[j].masa = 0.0;
+		cuerpos[j].posX = 0.0;
+		cuerpos[j].posY = 0.0;
+		cuerpos[j].velX = 0.0;
+		cuerpos[j].velY = 0.0;
+		cuerpos[j].accX = 0.0;
+		cuerpos[j].accY = 0.0;
+	}
+
 	fclose(fpread);
 
 }
 
-void calcularAceleracion(){
+void calcularAceleracion(){/*
 
 	int i;
 	for(i = 0; i < datos.n; i++){
@@ -148,7 +159,7 @@ void calcularAceleracion(){
 		}
 	}
 
-}
+*/}
 
 int main(int argc, char *argv[]) {
 
@@ -191,10 +202,10 @@ int main(int argc, char *argv[]) {
 	int ncu = datos.n / npr;
 	if((datos.n % npr) > 0) ncu++;
 
-	int tcu = ncu * datos.n; // Cuerpos totales (incluyendo vacios)
+	int cu_total = ncu * datos.n; // Cuerpos totales (incluyendo vacios)
 
 	// Reserva de memoria para 'n' cuerpos
-	cuerpos = malloc( sizeof(struct Cuerpo) * datos.n);
+	cuerpos = malloc( sizeof(struct Cuerpo) * cu_total);
 
 	if(rank == 0){
 
@@ -220,76 +231,16 @@ int main(int argc, char *argv[]) {
 			}
 
 			// Lectura de datos de cada cuerpo (Siempre por fichero)
-			leerDatosCuerpo();
+			leerDatosCuerpo(cu_total);
 
 			// Muestra de los datos
 			printf("\nDescripción de los cuerpos:\n");
 			imprimirTerminal(1);
 
-
-			// Enviar datos a los demas procesos
-			MPI_Bcast(&datos, 1, MPI_Datos, 0, MPI_COMM_WORLD);
-
-			// Enviar los datos de los cuerpos a los demas procesos
-
-
-			/* - - - - - Comienzo del algoritmo - - - - - */
-
-			int paso, q;
-			double inicio, fin;
-			int flag = 1;
-
-			GET_TIME(inicio);
-
-			double t = 0.0;
-
-			calcularAceleracion();
-
-			for(paso = 1; paso <= datos.tp; paso++){
-
-				for(q = 0; q < datos.n; q++){
-					cuerpos[q].posX += cuerpos[q].velX * datos.delta;
-					cuerpos[q].posY += cuerpos[q].velY * datos.delta;
-					cuerpos[q].velX += cuerpos[q].accX * datos.delta;
-					cuerpos[q].velY += cuerpos[q].accY * datos.delta;
-				}
-
-				for(q = 0; q < datos.n; q++){
-					calcularAceleracion();
-				}
-
-				t += datos.delta;
-
-				if(paso % datos.k == 0){
-					if(opcion == 1){
-						if(flag){
-							 printf("\n            \t%*s\t%*s\t%*s\t%*s\t%*s\t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
-							 flag = 0;
-						 }
-			 			printf("%.2f\n", t);
-						imprimirTerminal(0);
-					}else{
-						fprintf(fpwrite, "%.2f\n", t);
-						imprimirFichero();
-					}
-				}
-			}
-
-			GET_TIME(fin);
-
-			printf("\nEjecución en %f segundos.\n", (fin - inicio));
-			if(opcion == 2) fprintf(fpwrite, "Programa ejecutado en %f segundos.\n", (fin - inicio));
-
-			free(cuerpos);
-
-			// Fin main
-
-	} else { // Procesos con rango > 0
-
-		// Reciben los datos del proceso 0
-		MPI_Bcast(&datos, 1, MPI_Datos, 0, MPI_COMM_WORLD);
-
 	}
+
+	// Enviar datos a los demas procesos
+	MPI_Bcast(&datos, 1, MPI_Datos, 0, MPI_COMM_WORLD);
 
 	// Creamos un MPI datatype para los datos de cuerpos
 	MPI_Datatype MPI_Cuerpo;
@@ -299,42 +250,21 @@ int main(int argc, char *argv[]) {
 	MPI_Type_create_struct(2, blcklen2, displ2, types2, &MPI_Cuerpo);
 	MPI_Type_commit(&MPI_Cuerpo);
 
-	MPI_Datatype MPI_Cuerpos;
-	MPI_Type_contiguous(datos.n, MPI_Cuerpo, &MPI_Cuerpos);
-	MPI_Type_commit(&MPI_Cuerpos);
-
-	// int sizec;
-	// MPI_Type_size(MPI_Cuerpo, &sizec);
 	// MPI_Datatype MPI_Cuerpos;
-	// MPI_Type_vector(datos.n, sizec, sizec, MPI_Cuerpo, &MPI_Cuerpos);
+	// MPI_Type_contiguous(cu_total, MPI_Cuerpo, &MPI_Cuerpos);
 	// MPI_Type_commit(&MPI_Cuerpos);
 
-	if(rank == 0){
 
-		// Envia los datos de los cuerpos a los demás procesos.
-		// MPI_Bcast(&cuerpos, 1, MPI_Cuerpos, 0, MPI_COMM_WORLD);
-		// Lo mismo pero mal hecho, genera mas trafico.
-		for(int i = 0; i < datos.n; i++){
-			MPI_Bcast(&(cuerpos[i]), 1, MPI_Cuerpo, 0, MPI_COMM_WORLD);
-		}
+	// Envia los datos de los cuerpos a los demás procesos.
+	// MPI_Bcast(&cuerpos, 1, MPI_Cuerpos, 0, MPI_COMM_WORLD);
+	MPI_Bcast(&cuerpos, cu_total, MPI_Cuerpo, 0, MPI_COMM_WORLD);
+	// Lo mismo pero mal hecho, genera mas trafico.
+	// for(int i = 0; i < cu_total; i++){
+	// 	MPI_Bcast(&(cuerpos[i]), 1, MPI_Cuerpo, 0, MPI_COMM_WORLD);
+	// }
 
-		imprimirTerminal(1);
-
-	} else {
-
-		// Recibe los datos de los cuerpos del proceso 0
-		// MPI_Bcast(&cuerpos, 1, MPI_Cuerpos, 0, MPI_COMM_WORLD);
-		// Lo mismo pero mal hecho, genera mas trafico.
-		for(int i = 0; i < datos.n; i++){
-			MPI_Bcast(&(cuerpos[i]), 1, MPI_Cuerpo, 0, MPI_COMM_WORLD);
-		}
-
-		imprimirTerminal(1);
-
-	}
-
-
-
+	if(rank==0) imprimirTerminal(1);
+	if(rank == 1) imprimirTerminal(1);
 
 	MPI_Finalize();
 
