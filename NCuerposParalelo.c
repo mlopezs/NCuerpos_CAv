@@ -286,34 +286,51 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Creamos un MPI datatype para los datos de cuerpos
-	MPI_Datatype MPI_Cuerpos;
+	MPI_Datatype MPI_Cuerpo;
 	int blcklen2[2] = {1, 7};
 	MPI_Aint displ2[2] = {offsetof(struct Cuerpo, id), offsetof(struct Cuerpo, posX)};
 	MPI_Datatype types2[2] = {MPI_INT, MPI_DOUBLE};
-	MPI_Type_create_struct(datos.n, blcklen2, displ2, types2, &MPI_Cuerpos);
+	MPI_Type_create_struct(2, blcklen2, displ2, types2, &MPI_Cuerpo);
+	MPI_Type_commit(&MPI_Cuerpo);
+
+	MPI_Datatype MPI_Cuerpos;
+	MPI_Type_contiguous(datos.n, MPI_Cuerpo, &MPI_Cuerpos);
 	MPI_Type_commit(&MPI_Cuerpos);
+
+	// int sizec;
+	// MPI_Type_size(MPI_Cuerpo, &sizec);
+	// MPI_Datatype MPI_Cuerpos;
+	// MPI_Type_vector(datos.n, sizec, sizec, MPI_Cuerpo, &MPI_Cuerpos);
+	// MPI_Type_commit(&MPI_Cuerpos);
 
 	if(rank == 0){
 
-		MPI_Bcast(&cuerpos, 1, MPI_Cuerpos, 0, MPI_COMM_WORLD);
+		// Envia los datos de los cuerpos a los demás procesos.
+		// MPI_Bcast(&cuerpos, 1, MPI_Cuerpos, 0, MPI_COMM_WORLD);
+		// Lo mismo pero mal hecho, genera mas trafico.
+		for(int i = 0; i < datos.n; i++){
+			MPI_Bcast(&(cuerpos[i]), 1, MPI_Cuerpo, 0, MPI_COMM_WORLD);
+		}
+
+		imprimirTerminal(1);
 
 	} else {
 
 		// Recibe los datos de los cuerpos del proceso 0
-		MPI_Bcast(&cuerpos, 1, MPI_Cuerpos, 0, MPI_COMM_WORLD);
+		// MPI_Bcast(&cuerpos, 1, MPI_Cuerpos, 0, MPI_COMM_WORLD);
+		// Lo mismo pero mal hecho, genera mas trafico.
+		for(int i = 0; i < datos.n; i++){
+			MPI_Bcast(&(cuerpos[i]), 1, MPI_Cuerpo, 0, MPI_COMM_WORLD);
+		}
+
+
+		sleep(1);
+
+		imprimirTerminal(1);
 
 		/*
 
-
-
-
 		Comprobar si se envia y recibe bien el cuerpos
-
-
-
-
-
-
 
 		*/
 
