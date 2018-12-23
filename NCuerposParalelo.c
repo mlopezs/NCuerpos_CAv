@@ -36,6 +36,11 @@ struct Coord *pos; // Posiciones
 struct Coord *vel; // Velocidades
 struct Coord *acc; // Aceleraciones
 
+// MPI Types
+MPI_Datatype MPI_Datos;
+MPI_Datatype MPI_Masas;
+MPI_Datatype MPI_Coord;
+
 // Variable cuerpos totales
 int cuerpos_totales;
 
@@ -163,7 +168,6 @@ void calcularAceleracion(){/*
 
 */}
 
-MPI_Datatype MPI_Datos;
 void mpi_datatype_datos(){
 
 	int blcklen[2] = {3, 2};
@@ -174,7 +178,6 @@ void mpi_datatype_datos(){
 
 }
 
-MPI_Datatype MPI_Masas;
 void mpi_datatype_masas(){
 
 	int blcklen[2] = {1, 1};
@@ -185,7 +188,6 @@ void mpi_datatype_masas(){
 
 }
 
-MPI_Datatype MPI_Coord;
 void mpi_datatype_coord(){
 
 	int blcklen[2] = {1, 2};
@@ -243,6 +245,14 @@ int main(int argc, char *argv[]) {
 	if((datos.n % npr) > 0) ncu++;
 	cuerpos_totales = ncu * npr;
 
+	// Se reserva memoria para guardar los datos de los cuerpos
+
+	int aux = (rank == 0)?cuerpos_totales:ncu;
+	masas = malloc(sizeof(struct Masas) * aux);
+	pos = malloc(sizeof(struct Coord) * cuerpos_totales);
+	vel = malloc(sizeof(struct Coord) * aux);
+	acc = malloc(sizeof(struct Coord) * aux);
+
 	// Rank 0 obtiene y muestra/escribe los datos de los cuerpos
 
 	if(rank == 0){
@@ -265,28 +275,37 @@ int main(int argc, char *argv[]) {
 				fprintf(fpwrite, "            \t%*s \t%*s \t%*s \t%*s \t%*s \t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
 			}
 
-			// Se reserva memoria para guardar los datos de los cuerpos
-			masas = malloc( sizeof(struct Masas) * cuerpos_totales);
-			pos = malloc( sizeof(struct Coord) * cuerpos_totales);
-			vel = malloc( sizeof(struct Coord) * cuerpos_totales);
-			acc = malloc( sizeof(struct Coord) * cuerpos_totales);
-
 			// Lectura de datos de cada cuerpo (Siempre por fichero)
+
 			leerDatosCuerpo();
 
 			// Muestra de los datos
+
 			printf("\nDescripción de los cuerpos:\n");
 			imprimirTerminal(1);
 
 	}
-	
+
+	// Envío/Recepción de las posiciones de los cuerpos
+
+	MPI_Scatter(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
+
+	// if(rank==0) for(int i = 0; i < ncu; i++) printf("%d: %f - %f\n", rank, vel[i].x, vel[i].y); // DEBUG
+	// if(rank==1) for(int i = 0; i < ncu; i++) printf("%d: %f - %f\n", rank, vel[i].x, vel[i].y); // DEBUG
+
+	// Envío/Recepción de las posiciones de los cuerpos
+
+	MPI_Allgather(MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, pos, cuerpos_totales, MPI_Coord, MPI_COMM_WORLD);
+
+	// if(rank == 0) for(int i = 0; i < cuerpos_totales; i++) printf("%d: %f - %f\n", rank, pos[i].x, pos[i].y); // DEBUG
+	// if(rank == 1) for(int i = 0; i < cuerpos_totales; i++) printf("%d: %f - %f\n", rank, pos[i].x, pos[i].y); // DEBUG
+
+	MPI_Finalize();
 
 	free(masas);
 	free(pos);
 	free(vel);
 	free(acc);
-
-	MPI_Finalize();
 
 	return 0;
 
