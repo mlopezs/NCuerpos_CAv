@@ -45,7 +45,6 @@ struct Coord *a_anillo;
 MPI_Datatype MPI_Datos;
 MPI_Datatype MPI_Masas;
 MPI_Datatype MPI_Coord;
-
 MPI_Datatype MPI_CNCR;
 
 int rank, npr; // Id nodo y numero de procesadores
@@ -137,21 +136,31 @@ void leerDatosCuerpo() {
 
 void calcularAceleracion(int fase){
 
+	// Valor diferente si es inicio o en fases
+
 	struct Coord *pss = (fase == 0)?p_local:p_anillo;
+
+	// Identificadores
+
+	int p = (rank + fase) % npr;
+	int q = rank;
+
+	// Variables necesarias
 
 	double dx, dy, dm, d3, ax, ay;
 
-	for(int c = 0, p = (rank + fase) % npr; c < ncu && p < ncu*npr; c++, p += npr){
-		for(int d = 0, q = rank; d < ncu && q < ncu*npr; d++, q += npr){
+	// Algoritmo
+
+	for(int c = 0; c < ncu; c++){
+		for(int d = 0; d < ncu; d++){
 
 			if(p > q){
 
 				dx = pss[c].x - p_local[d].x;
 				dy = pss[c].y - p_local[d].y;
 				dm = sqrt(pow(dx, 2) + pow(dy, 2));
-				//printf("R%d: %f\n", rank, dm);
 
-				if(dm >= datos.u){
+				if(dm >= datos.u){ // Control umbral
 
 					d3 = pow(dm, 3);
 
@@ -161,21 +170,24 @@ void calcularAceleracion(int fase){
 					a_local[d].x += ax * masas[pss[c].id].m;
 					a_local[d].y += ay * masas[pss[c].id].m;
 
-					a_anillo[c].x += ax * -masas[pss[d].id].m;
-					a_anillo[c].y += ay * -masas[pss[d].id].m;
+					// Ahorro de cálculos
+					a_anillo[c].x += ax * -masas[p_local[d].id].m;
+					a_anillo[c].y += ay * -masas[p_local[d].id].m;
 
 				}
 			}
-			// rk += npr;
-			// if(rk >= ncu*npr) break;
+			q += npr;
+			if(q >= ncu*npr) break;
 		}
-		// yo += npr;
-		// if(yo >= ncu*npr) break;
+		p += npr;
+		if(p >= ncu*npr) break;
 	}
 
 }
 
 void prepararAceleracion(){
+
+	// Nodo fuente y nodo destino
 
 	int src = (rank + 1) % npr;
 	int dst = (rank - 1 + npr) % npr;
@@ -202,15 +214,22 @@ void prepararAceleracion(){
 
 	for(int fase = 1; fase < npr; fase++){
 
-		MPI_Sendrecv_replace(p_anillo, ncu, MPI_Coord, dst, 1, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		// Enviamos a destino/Recibimos desde fuente: p_anillo y a_anillo
 
+		MPI_Sendrecv_replace(p_anillo, ncu, MPI_Coord, dst, 1, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		MPI_Sendrecv_replace(a_anillo, ncu, MPI_Coord, dst, 1, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+		// Calculamos aceleraciones
 
 		calcularAceleracion(fase);
 
 	}
 
+	// Enviamos a_anillo a destino y recibimos a_anillo de fuente
+
 	MPI_Sendrecv_replace(a_anillo, ncu, MPI_Coord, dst, 1, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+	// Sumamos aceleraciones
 
 	for(int i = 0; i < ncu; i++){
 		a_local[i].x += a_anillo[i].x;
@@ -218,8 +237,6 @@ void prepararAceleracion(){
 	}
 
 }
-
-
 
 void mpi_datatype_datos(){
 
@@ -321,7 +338,7 @@ int main(int argc, char *argv[]) {
 		vel = malloc((sizeof(struct Coord)) * ncu);
 	}
 
-	// Se reserva memoria para los anillos
+	// Se reserva memoria para las posiciones y aceleraciones
 
 	p_local = malloc(sizeof(struct Coord) * ncu);
 	p_anillo = malloc(sizeof(struct Coord) * ncu);
@@ -401,17 +418,9 @@ int main(int argc, char *argv[]) {
 
 		}
 
-		// Envío/Recepción hacia/desde todos de las posiciones nuevas
-
-	//	MPI_Allgather(pos, ncu, MPI_Coord, all, ncu, MPI_Coord, MPI_COMM_WORLD);
-
 		// Calculamos aceleraciones
 
 		prepararAceleracion();
-
-		MPI_Gather(p_local, ncu, MPI_Coord, pos, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
-		MPI_Gather(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
-		MPI_Gather(a_local, ncu, MPI_Coord, acc, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 
 		// Incrementamos t
 
@@ -419,21 +428,20 @@ int main(int argc, char *argv[]) {
 
 		if(pasos % datos.k == 0){
 
-			// Envío/Recepción de velocidades y aceleraciones
+			MPI_Gather(p_local, ncu, MPI_Coord, pos, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
+			MPI_Gather(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
+			MPI_Gather(a_local, ncu, MPI_Coord, acc, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 
-			// MPI_Gather(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
-			// MPI_Gather(acc, ncu, MPI_Coord, acc, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
-
-			// Rank 0 imprime cuerpos
-
-			if(rank == 0){
-				if(flag){
-					 printf("\n            \t%*s\t%*s\t%*s\t%*s\t%*s\t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
-					 flag = 0;
-				 }
-				printf("%.2f\n", t);
-				imprimirTerminal(0);
-			}
+			#ifndef NO_SAL
+				if(rank == 0){
+					if(flag){
+						 printf("\n            \t%*s\t%*s\t%*s\t%*s\t%*s\t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
+						 flag = 0;
+					 }
+					printf("%.2f\n", t);
+					imprimirTerminal(0);
+				}
+			#endif
 		}
 
 	}

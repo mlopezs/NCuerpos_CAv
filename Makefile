@@ -15,5 +15,8 @@ run-par:
 compile-par-rapido:
 	mpicc NCuerposParalelo_AlgoritmoRapido.c -o NCuerposParalelo_AlgoritmoRapido -lm -Wall
 
+compile-par-rapido-nosal:
+	mpicc NCuerposParalelo_AlgoritmoRapido.c -o NCuerposParalelo_AlgoritmoRapido -lm -Wall -D NO_SAL
+
 run-par-rapido:
 	mpirun -np 2 NCuerposParalelo_AlgoritmoRapido
