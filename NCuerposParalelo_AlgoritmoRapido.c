@@ -137,19 +137,19 @@ void leerDatosCuerpo() {
 
 void calcularAceleracion(int fase){
 
+	struct Coord *pss = (fase == 0)?p_local:p_anillo;
+
 	double dx, dy, dm, d3, ax, ay;
 
-	int yo = (rank + fase) % npr;
-	int rk = rank;
+	for(int c = 0, p = (rank + fase) % npr; c < ncu && p < ncu*npr; c++, p += npr){
+		for(int d = 0, q = rank; d < ncu && q < ncu*npr; d++, q += npr){
 
-	for(int c = 0; c < ncu; c++){
-		for(int d = 0; d < ncu; d++){
+			if(p > q){
 
-			if(yo > rk){
-
-				dx = p_local[c].x - p_local[d].x;
-				dy = p_local[c].y - p_local[d].y;
+				dx = pss[c].x - p_local[d].x;
+				dy = pss[c].y - p_local[d].y;
 				dm = sqrt(pow(dx, 2) + pow(dy, 2));
+				//printf("R%d: %f\n", rank, dm);
 
 				if(dm >= datos.u){
 
@@ -158,17 +158,19 @@ void calcularAceleracion(int fase){
 					ax = (G * dx) / d3;
 					ay = (G * dy) / d3;
 
-					a_local[d].x += ax * masas[p_local[c].id].m;
-					a_local[d].y += ay * masas[p_local[c].id].m;
+					a_local[d].x += ax * masas[pss[c].id].m;
+					a_local[d].y += ay * masas[pss[c].id].m;
 
-					a_anillo[c].x += ax * -masas[p_local[d].id].m;
-					a_anillo[c].y += ay * -masas[p_local[d].id].m;
+					a_anillo[c].x += ax * -masas[pss[d].id].m;
+					a_anillo[c].y += ay * -masas[pss[d].id].m;
 
 				}
 			}
-			rk += npr;
+			// rk += npr;
+			// if(rk >= ncu*npr) break;
 		}
-		yo += npr;
+		// yo += npr;
+		// if(yo >= ncu*npr) break;
 	}
 
 }
@@ -189,25 +191,17 @@ void prepararAceleracion(){
 	// a_local <- a_anillo <- 0.0
 
 	for(int i = 0; i < ncu; i++){
-		a_anillo[i].id = p_local[i].id;
-		a_anillo[i].x = 0.0;
-		a_anillo[i].y = 0.0;
-		a_local[i].id = p_local[i].id;
-		a_local[i].x = 0.0;
-		a_local[i].y = 0.0;
+		a_anillo[i].id = a_local[i].id = p_local[i].id;
+		a_local[i].x = a_anillo[i].x = 0.0;
+		a_local[i].y = a_anillo[i].y = 0.0;
 	}
-
-	// for(int i = 0; i < ncu; i++){
-	// 	a_anillo[i].id = a_local[i].id = p_local[i].id;
-	// 	a_local[i].x = a_anillo[i].x = 0.0;
-	// 	a_local[i].y = a_anillo[i].y = 0.0;
-	// }
 
 	// Calculamos aceleraciones
 
 	calcularAceleracion(0);
 
 	for(int fase = 1; fase < npr; fase++){
+
 		MPI_Sendrecv_replace(p_anillo, ncu, MPI_Coord, dst, 1, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 		MPI_Sendrecv_replace(a_anillo, ncu, MPI_Coord, dst, 1, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
