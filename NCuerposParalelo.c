@@ -32,7 +32,7 @@ struct Coord {
 
 struct Datos datos;
 struct Masas *masas;
-struct Coord *pos; // Posiciones
+struct Coord *pos; // Posiciones de MIS cuerpos
 struct Coord *all; // Posiciones de TODOS los cuerpos
 struct Coord *vel; // Velocidades
 struct Coord *acc; // Aceleraciones
@@ -136,11 +136,11 @@ void calcularAceleracion(){
 	}
 
 	double dx, dy, dm, d3, ax, ay;
-	int yo, sig;
+	int sig;
 
 	for(int c = 0; c < ncu; c++){
 
-		yo = vel[c].id, sig = yo + 1;
+		sig = vel[c].id + 1;
 		if(sig >= cuerpos_totales) sig = 0;
 
 		for(int i = 0; i < cuerpos_totales-1; i++){
@@ -286,24 +286,22 @@ int main(int argc, char *argv[]) {
 
 	}
 
-	// Envío/Recepción de las masas, posiciones y velocidades de los cuerpos
+	// Envío/Recepción de las masas (Todos los procesos tienen todas las masas)
+
+	MPI_Bcast(masas, cuerpos_totales, MPI_Masas, 0, MPI_COMM_WORLD);
+
+	// Envío/Recepción de las posiciones y velocidades desde 0 a los demás
 
 	MPI_Scatter(all, ncu, MPI_Coord, pos, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 	MPI_Scatter(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 
-	// Envío/Recepción de las posiciones de todos los cuerpos
+	// Envío/Recepción de las posiciones hacia/desde todos los cuerpos
 
 	MPI_Allgather(pos, ncu, MPI_Coord, all, ncu, MPI_Coord, MPI_COMM_WORLD);
-	MPI_Allgather(MPI_IN_PLACE, cuerpos_totales, MPI_Masas, masas, cuerpos_totales, MPI_Coord, MPI_COMM_WORLD);
 
-	// if(rank == 1) printf("%d: %f - %f, %f - %f, m:%f\n", vel[0].id, pos[1].x, pos[1].y, vel[0].x, vel[0].y, masas[0].m); // DEBUG
-	// if(rank == 0) imprimirTerminal(1); // DEBUG
-
-	// Cálculo de aceleraciones iniciales
 
 	double inicio, fin; // Tiempo transcurrido
 
-	int yo;
 	double t = 0.0;
 
 	int flag = 1;
@@ -312,14 +310,15 @@ int main(int argc, char *argv[]) {
 
 	inicio = MPI_Wtime();
 
+	// Cálculo de aceleraciones iniciales
+
 	calcularAceleracion();
 
 	for(int pasos = 1; pasos <= datos.tp; pasos++){
 
-		// Recorriendo los cuerpos asignados a mi proceso, cálculo de posiciones y velocidades
-		for(int i = 0; i < ncu; i++){
+		// Recorremos los cuerpos asignados al proceso actual
 
-			yo = vel[i].id;
+		for(int i = 0; i < ncu; i++){
 
 			pos[i].x += vel[i].x * datos.delta;
 			pos[i].y += vel[i].y * datos.delta;
@@ -328,59 +327,26 @@ int main(int argc, char *argv[]) {
 
 		}
 
-		// Envío/Recepción de posiciones nuevas (Varias formas, solo funciona la que está descomentada, pero es solo para 2 procesos y 2 cuerpos)
-
-		// if(rank == 0){
-		// 	MPI_Send(&(pos[0]), 1, MPI_Coord, 1, 0, MPI_COMM_WORLD);
-		// 	MPI_Recv(&(pos[1]), 1, MPI_Coord, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		// }else{
-		// 	MPI_Send(&(pos[1]), 1, MPI_Coord, 0, 0, MPI_COMM_WORLD);
-		// 	MPI_Recv(&(pos[0]), 1, MPI_Coord, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		// }
-
-		// Envío a rank 0 y posterior Bcast
-		// int v;
-		// if(rank == 0){
-		// 	for(int i = 1; i < npr; i++){
-		// 		for(int j = 0; j < ncu; j++){
-		// 			v = (i * ncu) + j;
-		// 			MPI_Recv(&(pos[v]), 1, MPI_Coord, i, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		// 		}
-		// 	}
-		// }else{
-		// 	for(int i = 0; i < ncu; i++){
-		// 		MPI_Send(&(pos[i]), 1, MPI_Coord, 0, rank, MPI_COMM_WORLD);
-		// 	}
-		// }
-		// MPI_Barrier(MPI_COMM_WORLD);
-		// MPI_Bcast(pos, cuerpos_totales, MPI_Coord, 0, MPI_COMM_WORLD);
-
-		// // Gather + Bcast
-		// MPI_Gather(pos, cuerpos_totales, MPI_Coord, pos, cuerpos_totales, MPI_Coord, 0, MPI_COMM_WORLD);
-		// MPI_Bcast(pos, cuerpos_totales, MPI_Coord, 0, MPI_COMM_WORLD);
-
-		// Allgather
-		// MPI_Allgather(MPI_IN_PLACE, cuerpos_totales, MPI_Coord, pos, cuerpos_totales, MPI_Coord, MPI_COMM_WORLD);
+		// Envío/Recepción hacia/desde todos de las posiciones nuevas
 
 		MPI_Allgather(pos, ncu, MPI_Coord, all, ncu, MPI_Coord, MPI_COMM_WORLD);
 
+		// Calculamos aceleraciones
+
 		calcularAceleracion();
+
+		// Incrementamos t
 
 		t += datos.delta;
 
 		if(pasos % datos.k == 0){
 
-			// Envío de rank 1 a rank 2
+			// Envío/Recepción de velocidades y aceleraciones
 
-			if(rank == 0){
-				MPI_Recv(&(vel[1]), 1, MPI_Coord, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-					MPI_Recv(&(acc[1]), 1, MPI_Coord, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			}else{
-				MPI_Send(&(vel[0]), 1, MPI_Coord, 0, 0, MPI_COMM_WORLD);
-				MPI_Send(&(acc[0]), 1, MPI_Coord, 0, 0, MPI_COMM_WORLD);
-			}
+			MPI_Gather(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
+			MPI_Gather(acc, ncu, MPI_Coord, acc, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 
-			// Rank 0 imprime
+			// Rank 0 imprime cuerpos
 
 			if(rank == 0){
 				if(flag){
@@ -388,20 +354,24 @@ int main(int argc, char *argv[]) {
 					 flag = 0;
 				 }
 				printf("%.2f\n", t);
-				for(int i = 0; i < datos.n; i++){
-					printf("Cuerpo: %d -> ", all[i].id);
-					printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, all[i].x, 10, all[i].y, 10, vel[i].x, 10, vel[i].y, 10, acc[i].x, 10, acc[i].y);
-				}
+				imprimirTerminal(0);
 			}
-
 		}
 
 	}
 
+	// Calculamos el tiempo de cada proceso
+
 	fin = MPI_Wtime();
-	double tiempo_indv = fin - inicio, tiempo_total;
+	double tiempo_indv = fin - inicio;
+
+	// Obtenemos el tiempo mayor de entre todos
+
+	double tiempo_total;
 	MPI_Reduce(&tiempo_indv, &tiempo_total, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 	if(rank == 0) printf("\nPrograma ejecutado en %f segundos.\n", tiempo_total);
+
+	/* - - - - Finalización - - - - */
 
 	MPI_Finalize();
 
