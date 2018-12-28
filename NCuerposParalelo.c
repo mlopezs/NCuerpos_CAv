@@ -33,7 +33,7 @@ struct Coord {
 struct Datos datos;
 struct Masas *masas;
 struct Coord *pos; // Posiciones
-struct Coord *all; // Todas las posiciones
+struct Coord *all; // Posiciones de TODOS los cuerpos
 struct Coord *vel; // Velocidades
 struct Coord *acc; // Aceleraciones
 
@@ -49,8 +49,8 @@ void imprimirFichero(){
 
 	int i;
 	for(i = 0; i < datos.n; i++){
-		fprintf(fpwrite, "Cuerpo: %d -> ", pos[i].id);
-		fprintf(fpwrite, "\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, pos[i].x, 10, pos[i].y, 10, vel[i].x, 10, vel[i].y, 10, acc[i].x, 10, acc[i].y);
+		fprintf(fpwrite, "Cuerpo: %d -> ", all[i].id);
+		fprintf(fpwrite, "\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, all[i].x, 10, all[i].y, 10, vel[i].x, 10, vel[i].y, 10, acc[i].x, 10, acc[i].y);
 	}
 
 	fprintf(fpwrite, "\n");
@@ -63,7 +63,7 @@ void imprimirTerminal(int m){
 	for(i = 0; i < datos.n; i++){
 		printf("Cuerpo: %d -> ", vel[i].id);
 		if(m) printf("Masa: %.2f\n", masas[i].m);
-		printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, pos[i].x, 10, pos[i].y, 10, vel[i].x, 10, vel[i].y, 10, acc[i].x, 10, acc[i].y);
+		printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, all[i].x, 10, all[i].y, 10, vel[i].x, 10, vel[i].y, 10, acc[i].x, 10, acc[i].y);
 	}
 
 }
@@ -111,14 +111,14 @@ void leerDatosCuerpo() {
 
 	int i;
 	for (i = 0; i < datos.n; i++) {
-		fscanf(fpread, "%lf, %lf, %lf, %lf, %lf", &(masas[i]).m, &(pos[i]).x, &(pos[i]).y, &(vel[i]).x, &(vel[i]).y);
-		masas[i].id = i; pos[i].id = i; vel[i].id = i;
+		fscanf(fpread, "%lf, %lf, %lf, %lf, %lf", &(masas[i]).m, &(all[i]).x, &(all[i]).y, &(vel[i]).x, &(vel[i]).y);
+		masas[i].id = i; all[i].id = i; vel[i].id = i;
 		acc[i].x = 0; acc[i].y = 0;
 	}
 	// Cuerpos vacíos
 	for(i = datos.n; i < cuerpos_totales; i++){
 		masas[i].id = -1; masas[i].m = 0;
-		pos[i].id = -1; pos[i].x = 0; pos[i].y = 0;
+		all[i].id = -1; all[i].x = 0; all[i].y = 0;
 		vel[i].id = -1; vel[i].x = 0; vel[i].y = 0;
 		acc[i].id = -1; acc[i].x = 0; acc[i].y = 0;
 	}
@@ -145,8 +145,8 @@ void calcularAceleracion(){
 
 		for(int i = 0; i < cuerpos_totales-1; i++){
 
-			dx = pos[sig].x - pos[yo].x;
-			dy = pos[sig].y - pos[yo].y;
+			dx = all[sig].x - pos[c].x;
+			dy = all[sig].y - pos[c].y;
 			dm = sqrt(pow(dx, 2) + pow(dy, 2));
 
 			if(dm >= datos.u){
@@ -248,7 +248,8 @@ int main(int argc, char *argv[]) {
 
 	int aux = (rank == 0)?cuerpos_totales:ncu;
 	masas = malloc((sizeof(struct Masas)+24) * cuerpos_totales);
-	pos = malloc((sizeof(struct Coord)+24) * cuerpos_totales); // Si no ponemos el 16/24/32... sale un error de memoria (aunque el programa sigue funcionando igual)
+	all = malloc((sizeof(struct Coord)+24) * cuerpos_totales); // Si no ponemos el 16/24/32... sale un error de memoria (aunque el programa sigue funcionando igual)
+	pos = malloc((sizeof(struct Coord) * ncu));
 	vel = malloc(sizeof(struct Coord) * aux);
 	acc = malloc(sizeof(struct Coord) * aux);
 
@@ -287,13 +288,12 @@ int main(int argc, char *argv[]) {
 
 	// Envío/Recepción de las masas, posiciones y velocidades de los cuerpos
 
-	// MPI_Scatter(masas, ncu, MPI_Masas, masas, ncu, MPI_Masas, 0, MPI_COMM_WORLD);
-	MPI_Scatter(pos, ncu, MPI_Coord, pos, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
+	MPI_Scatter(all, ncu, MPI_Coord, pos, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 	MPI_Scatter(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 
 	// Envío/Recepción de las posiciones de todos los cuerpos
 
-	MPI_Allgather(MPI_IN_PLACE, cuerpos_totales, MPI_Coord, pos, cuerpos_totales, MPI_Coord, MPI_COMM_WORLD);
+	MPI_Allgather(pos, ncu, MPI_Coord, all, ncu, MPI_Coord, MPI_COMM_WORLD);
 	MPI_Allgather(MPI_IN_PLACE, cuerpos_totales, MPI_Masas, masas, cuerpos_totales, MPI_Coord, MPI_COMM_WORLD);
 
 	// if(rank == 1) printf("%d: %f - %f, %f - %f, m:%f\n", vel[0].id, pos[1].x, pos[1].y, vel[0].x, vel[0].y, masas[0].m); // DEBUG
@@ -321,8 +321,8 @@ int main(int argc, char *argv[]) {
 
 			yo = vel[i].id;
 
-			pos[yo].x += vel[i].x * datos.delta;
-			pos[yo].y += vel[i].y * datos.delta;
+			pos[i].x += vel[i].x * datos.delta;
+			pos[i].y += vel[i].y * datos.delta;
 			vel[i].x += acc[i].x * datos.delta;
 			vel[i].y += acc[i].y * datos.delta;
 
@@ -330,13 +330,13 @@ int main(int argc, char *argv[]) {
 
 		// Envío/Recepción de posiciones nuevas (Varias formas, solo funciona la que está descomentada, pero es solo para 2 procesos y 2 cuerpos)
 
-		if(rank == 0){
-			MPI_Send(&(pos[0]), 1, MPI_Coord, 1, 0, MPI_COMM_WORLD);
-			MPI_Recv(&(pos[1]), 1, MPI_Coord, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		}else{
-			MPI_Send(&(pos[1]), 1, MPI_Coord, 0, 0, MPI_COMM_WORLD);
-			MPI_Recv(&(pos[0]), 1, MPI_Coord, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		}
+		// if(rank == 0){
+		// 	MPI_Send(&(pos[0]), 1, MPI_Coord, 1, 0, MPI_COMM_WORLD);
+		// 	MPI_Recv(&(pos[1]), 1, MPI_Coord, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		// }else{
+		// 	MPI_Send(&(pos[1]), 1, MPI_Coord, 0, 0, MPI_COMM_WORLD);
+		// 	MPI_Recv(&(pos[0]), 1, MPI_Coord, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		// }
 
 		// Envío a rank 0 y posterior Bcast
 		// int v;
@@ -361,6 +361,8 @@ int main(int argc, char *argv[]) {
 
 		// Allgather
 		// MPI_Allgather(MPI_IN_PLACE, cuerpos_totales, MPI_Coord, pos, cuerpos_totales, MPI_Coord, MPI_COMM_WORLD);
+
+		MPI_Allgather(pos, ncu, MPI_Coord, all, ncu, MPI_Coord, MPI_COMM_WORLD);
 
 		calcularAceleracion();
 
@@ -387,8 +389,8 @@ int main(int argc, char *argv[]) {
 				 }
 				printf("%.2f\n", t);
 				for(int i = 0; i < datos.n; i++){
-					printf("Cuerpo: %d -> ", pos[i].id);
-					printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, pos[i].x, 10, pos[i].y, 10, vel[i].x, 10, vel[i].y, 10, acc[i].x, 10, acc[i].y);
+					printf("Cuerpo: %d -> ", all[i].id);
+					printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, all[i].x, 10, all[i].y, 10, vel[i].x, 10, vel[i].y, 10, acc[i].x, 10, acc[i].y);
 				}
 			}
 
@@ -404,6 +406,7 @@ int main(int argc, char *argv[]) {
 	MPI_Finalize();
 
 	free(masas);
+	free(all);
 	free(pos);
 	free(vel);
 	free(acc);
