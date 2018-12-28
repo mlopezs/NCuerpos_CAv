@@ -41,8 +41,8 @@ MPI_Datatype MPI_Datos;
 MPI_Datatype MPI_Masas;
 MPI_Datatype MPI_Coord;
 
-// Variable cuerpos totales
-int cuerpos_totales;
+int cuerpos_totales; // Cuerpos totales (+vacíos)
+int ncu; // Cuerpos por procesador
 
 void imprimirFichero(){
 
@@ -126,47 +126,45 @@ void leerDatosCuerpo() {
 
 }
 
-void calcularAceleracion(){/*
+void calcularAceleracion(){
 
-	int i;
-	for(i = 0; i < datos.n; i++){
-		cuerpos[i].accX = 0.0;
-		cuerpos[i].accY = 0.0;
+	for(int i = 0; i < ncu; i++){
+		acc[i].id = vel[i].id;
+		acc[i].x = 0.0;
+		acc[i].y = 0.0;
 	}
 
-	int q, p;
-	double distX, distY, distMod;
-	double dist3;
-	double accX, accY;
+	double dx, dy, dm, d3, ax, ay;
+	int yo, sig;
 
-	for(q = 0; q < datos.n; q++){
-		for(p = q+1; p < datos.n; p++){
+	for(int c = 0; c < ncu; c++){
 
-			distX = cuerpos[q].posX - cuerpos[p].posX;
-			distY = cuerpos[q].posY - cuerpos[p].posY;
-			distMod = sqrt(pow(distX,2) + pow(distY,2));
+		yo = vel[c].id, sig = yo + 1;
+		if(sig >= cuerpos_totales) sig = 0;
 
-			if(distMod >= datos.u){ // Control umbral
+		for(int i = 0; i < cuerpos_totales-1; i++){
 
-				dist3 = pow(distMod, 3);
+			dx = pos[sig].x - pos[yo].x;
+			dy = pos[sig].y - pos[yo].y;
+			dm = sqrt(pow(dx, 2) + pow(dy, 2));
 
-				distX = cuerpos[p].posX - cuerpos[q].posX;
-				distY = cuerpos[p].posY - cuerpos[q].posY;
+			if(dm >= datos.u){
 
-				accX = (G * distX) / dist3;
-				accY = (G * distY) / dist3;
+				d3 = pow(dm, 3);
 
-				cuerpos[q].accX += accX * cuerpos[p].masa;
-				cuerpos[q].accY += accY * cuerpos[p].masa;
+				ax = (G * dx) / d3;
+				ay = (G * dy) / d3;
 
-				cuerpos[p].accX += accX * -cuerpos[q].masa;
-				cuerpos[p].accY += accY * -cuerpos[q].masa;
+				acc[c].x += ax * masas[sig].m;
+				acc[c].y += ay * masas[sig].m;
+
+				sig++;
+				if(sig >= cuerpos_totales) sig = 0;
 
 			}
 		}
 	}
-
-*/}
+}
 
 void mpi_datatype_datos(){
 
@@ -241,15 +239,15 @@ int main(int argc, char *argv[]) {
 
 	// Se calculan los cuerpos totales (contando vacíos)
 
-	int ncu = datos.n / npr;
+	ncu = datos.n / npr;
 	if((datos.n % npr) > 0) ncu++;
 	cuerpos_totales = ncu * npr;
 
 	// Se reserva memoria para guardar los datos de los cuerpos
 
 	int aux = (rank == 0)?cuerpos_totales:ncu;
-	masas = malloc(sizeof(struct Masas) * aux);
-	pos = malloc((sizeof(struct Coord)+16) * cuerpos_totales); // Si no ponemos el 16/24/32... sale un error de memoria (aunque el programa sigue funcionando igual)
+	masas = malloc((sizeof(struct Masas)+24) * cuerpos_totales);
+	pos = malloc((sizeof(struct Coord)+24) * cuerpos_totales); // Si no ponemos el 16/24/32... sale un error de memoria (aunque el programa sigue funcionando igual)
 	vel = malloc(sizeof(struct Coord) * aux);
 	acc = malloc(sizeof(struct Coord) * aux);
 
@@ -288,61 +286,40 @@ int main(int argc, char *argv[]) {
 
 	// Envío/Recepción de las masas, posiciones y velocidades de los cuerpos
 
-	MPI_Scatter(masas, ncu, MPI_Masas, masas, ncu, MPI_Masas, 0, MPI_COMM_WORLD);
+	// MPI_Scatter(masas, ncu, MPI_Masas, masas, ncu, MPI_Masas, 0, MPI_COMM_WORLD);
 	MPI_Scatter(pos, ncu, MPI_Coord, pos, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 	MPI_Scatter(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 
-	// Asignación de aceleraciones
-
-	for(int i = 0; i < ncu; i++){
-		acc[i].id = vel[i].id;
-		acc[i].x = 0.0;
-		acc[i].y = 0.0;
-	}
-
-	// Recepción de las posiciones de todos los cuerpos
+	// Envío/Recepción de las posiciones de todos los cuerpos
 
 	MPI_Allgather(MPI_IN_PLACE, cuerpos_totales, MPI_Coord, pos, cuerpos_totales, MPI_Coord, MPI_COMM_WORLD);
+	MPI_Allgather(MPI_IN_PLACE, cuerpos_totales, MPI_Masas, masas, cuerpos_totales, MPI_Coord, MPI_COMM_WORLD);
 
 	// if(rank == 1) printf("%d: %f - %f, %f - %f, m:%f\n", vel[0].id, pos[1].x, pos[1].y, vel[0].x, vel[0].y, masas[0].m); // DEBUG
 	// if(rank == 0) imprimirTerminal(1); // DEBUG
 
 	// Cálculo de aceleraciones iniciales
 
-	int yo = vel[0].id, sig = yo + 1;
-	if(sig >= cuerpos_totales) sig = 0;
-
-	double dx, dy, dm, d3, ax, ay;
-	for(int i = 0; i < cuerpos_totales-1; i++){
-
-		dx = pos[sig].x - pos[yo].x;
-		dy = pos[sig].y - pos[yo].y;
-		dm = sqrt(pow(dx, 2) + pow(dy, 2));
-
-		if(dm >= datos.u){
-
-			d3 = pow(dm, 3);
-
-			ax = (G * dx) / d3;
-			ay = (G * dy) / d3;
-
-			acc[0].x += ax * masas[sig].m;
-			acc[0].y += ay * masas[sig].m;
-
-			sig++;
-			if(sig >= cuerpos_totales) sig = 0;
-
-		}
-	}
+	calcularAceleracion();
 
 	double t = 0.0;
+	int yo;
 
 	for(int pasos = 1; pasos <= datos.tp; pasos++){
 
-		pos[yo].x += vel[0].x * datos.delta;
-		pos[yo].y += vel[0].y * datos.delta;
-		vel[0].x += acc[0].x * datos.delta;
-		vel[0].y += acc[0].y * datos.delta;
+		// Recorriendo los cuerpos asignados a mi proceso, calculo de posiciones y velocidades
+		for(int i = 0; i < ncu; i++){
+
+			yo = vel[i].id;
+
+			pos[yo].x += vel[i].x * datos.delta;
+			pos[yo].y += vel[i].y * datos.delta;
+			vel[i].x += acc[i].x * datos.delta;
+			vel[i].y += acc[i].y * datos.delta;
+
+		}
+
+		// Envío/Recepción de posiciones nuevas (Varias formas, solo funciona la que está descomentada, pero es solo para 2 procesos y 2 cuerpos)
 
 		if(rank == 0){
 			MPI_Send(&(pos[0]), 1, MPI_Coord, 1, 0, MPI_COMM_WORLD);
@@ -352,34 +329,31 @@ int main(int argc, char *argv[]) {
 			MPI_Recv(&(pos[0]), 1, MPI_Coord, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		}
 
-		for(int i = 0; i < datos.n; i++){
-			printf("Rank %d: Paso(%d) Cuerpo(%d): %f,%f\n", rank, pasos, i, pos[i].x, pos[i].y);
-		}
+		// // Envío a rank 0 y posterior Bcast
+		// int v;
+		// if(rank == 0){
+		// 	for(int i = 1; i < npr; i++){
+		// 		for(int j = 0; j < ncu; j++){
+		// 			v = (i * ncu) + j;
+		// 			MPI_Recv(&(pos[v]), 1, MPI_Coord, i, i, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		// 		}
+		// 	}
+		// }else{
+		// 	for(int i = 0; i < ncu; i++){
+		// 		MPI_Send(&(pos[i]), 1, MPI_Coord, 0, rank, MPI_COMM_WORLD);
+		// 	}
+		// }
+		// MPI_Barrier(MPI_COMM_WORLD);
+		// MPI_Bcast(pos, cuerpos_totales, MPI_Coord, 0, MPI_COMM_WORLD);
 
-		// MPI_Allgather(MPI_IN_PLACE, cuerpos_totales, MPI_Coord, pos, cuerpos_totales, MPI_Coord, MPI_COMM_WORLD);
+		// // Gather + Bcast
+		// MPI_Gather(pos, cuerpos_totales, MPI_Coord, pos, cuerpos_totales, MPI_Coord, 0, MPI_COMM_WORLD);
+		// MPI_Bcast(pos, cuerpos_totales, MPI_Coord, 0, MPI_COMM_WORLD);
 
-		sig = yo+1;
-		for(int i = 0; i < cuerpos_totales-1; i++){
+		// // Allgather
+		// MPI_Allgather(pos, cuerpos_totales, MPI_Coord, pos, cuerpos_totales, MPI_Coord, MPI_COMM_WORLD);
 
-			dx = pos[sig].x - pos[yo].x;
-			dy = pos[sig].y - pos[yo].y;
-			dm = sqrt(pow(dx, 2) + pow(dy, 2));
-
-			if(dm >= datos.u){
-
-				d3 = pow(dm, 3);
-
-				ax = (G * dx) / d3;
-				ay = (G * dy) / d3;
-
-				acc[0].x += ax * masas[sig].m;
-				acc[0].y += ay * masas[sig].m;
-
-				sig++;
-				if(sig >= cuerpos_totales) sig = 0;
-
-			}
-		}
+		calcularAceleracion();
 
 		t += datos.delta;
 
@@ -387,10 +361,10 @@ int main(int argc, char *argv[]) {
 			// MPI_Gather(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 			// MPI_Gather(acc, ncu, MPI_Coord, acc, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 			// MPI_Gather(pos, ncu, MPI_Coord, pos, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
-			// if(rank == 0) printf("%.2f\n", t);
-			// MPI_Barrier(MPI_COMM_WORLD);
-			// printf("Cuerpo: %d -> ", yo);
-			// printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, pos[yo].x, 10, pos[yo].y, 10, vel[0].x, 10, vel[0].y, 10, acc[0].x, 10, acc[0].y);
+			if(rank == 0) printf("%.2f\n", t);
+			MPI_Barrier(MPI_COMM_WORLD);
+			printf("Cuerpo: %d -> ", yo);
+			printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, pos[rank].x, 10, pos[rank].y, 10, vel[0].x, 10, vel[0].y, 10, acc[0].x, 10, acc[0].y);
 		}
 	}
 

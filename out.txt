@@ -1,0 +1,2 @@
+Por cada instante de tiempo y cada cuerpo aparecen: 
+            	Posicion(x) 	Posicion(y) 	Velocidad(x) 	Velocidad(y) 	Aceleracion(x) 	Aceleracion(y)
