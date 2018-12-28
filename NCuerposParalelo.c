@@ -348,14 +348,16 @@ int main(int argc, char *argv[]) {
 
 			// Rank 0 imprime cuerpos
 
-			if(rank == 0){
-				if(flag){
-					 printf("\n            \t%*s\t%*s\t%*s\t%*s\t%*s\t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
-					 flag = 0;
-				 }
-				printf("%.2f\n", t);
-				imprimirTerminal(0);
-			}
+			#ifndef NO_SAL
+				if(rank == 0){
+					if(flag){
+						 printf("\n            \t%*s\t%*s\t%*s\t%*s\t%*s\t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
+						 flag = 0;
+					 }
+					printf("%.2f\n", t);
+					imprimirTerminal(0);
+				}
+			#endif
 		}
 
 	}
