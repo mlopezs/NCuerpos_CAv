@@ -4,10 +4,29 @@
 #include <math.h>
 #include <openmpi/mpi.h>
 #include "timer.h"
+#include <X11/Xlib.h> //Libreria x11 para mostrar graficos
+#include <assert.h>
+#include <unistd.h>
+
+
 
 #define FREAD "datos.dat"
 #define FWRITE "out.txt"
 #define G 1
+#define NIL (0)
+
+/*----- Variables para pintar la gráfica -----*/
+
+XColor colorX;
+//long *colores;
+// Colormap mapacolor;
+// char cadenaColor[]="#000000";
+unsigned long chartreuse;
+Display *dpy;
+int screen;
+Window w;
+GC gc;
+
 
 FILE *fpread, *fpwrite;
 
@@ -33,22 +52,14 @@ struct Coord {
 struct Datos datos;
 struct Masas *masas;
 struct Coord *pos; // Posiciones de MIS cuerpos
+struct Coord *all; // Posiciones de TODOS los cuerpos
 struct Coord *vel; // Velocidades
 struct Coord *acc; // Aceleraciones
-
-struct Coord *p_local;
-struct Coord *a_local;
-struct Coord *p_anillo;
-struct Coord *a_anillo;
 
 // MPI Types
 MPI_Datatype MPI_Datos;
 MPI_Datatype MPI_Masas;
 MPI_Datatype MPI_Coord;
-
-MPI_Datatype MPI_CNCR;
-
-int rank, npr; // Id nodo y numero de procesadores
 
 int cuerpos_totales; // Cuerpos totales (+vacíos)
 int ncu; // Cuerpos por procesador
@@ -57,8 +68,8 @@ void imprimirFichero(){
 
 	int i;
 	for(i = 0; i < datos.n; i++){
-		fprintf(fpwrite, "Cuerpo: %d -> ", pos[i].id);
-		fprintf(fpwrite, "\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, pos[i].x, 10, pos[i].y, 10, vel[i].x, 10, vel[i].y, 10, acc[i].x, 10, acc[i].y);
+		fprintf(fpwrite, "Cuerpo: %d -> ", all[i].id);
+		fprintf(fpwrite, "\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, all[i].x, 10, all[i].y, 10, vel[i].x, 10, vel[i].y, 10, acc[i].x, 10, acc[i].y);
 	}
 
 	fprintf(fpwrite, "\n");
@@ -71,7 +82,7 @@ void imprimirTerminal(int m){
 	for(i = 0; i < datos.n; i++){
 		printf("Cuerpo: %d -> ", vel[i].id);
 		if(m) printf("Masa: %.2f\n", masas[i].m);
-		printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, pos[i].x, 10, pos[i].y, 10, vel[i].x, 10, vel[i].y, 10, acc[i].x, 10, acc[i].y);
+		printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, all[i].x, 10, all[i].y, 10, vel[i].x, 10, vel[i].y, 10, acc[i].x, 10, acc[i].y);
 	}
 
 }
@@ -119,14 +130,14 @@ void leerDatosCuerpo() {
 
 	int i;
 	for (i = 0; i < datos.n; i++) {
-		fscanf(fpread, "%lf, %lf, %lf, %lf, %lf", &(masas[i]).m, &(pos[i]).x, &(pos[i]).y, &(vel[i]).x, &(vel[i]).y);
-		masas[i].id = i; pos[i].id = i; vel[i].id = i;
+		fscanf(fpread, "%lf, %lf, %lf, %lf, %lf", &(masas[i]).m, &(all[i]).x, &(all[i]).y, &(vel[i]).x, &(vel[i]).y);
+		masas[i].id = i; all[i].id = i; vel[i].id = i;
 		acc[i].x = 0; acc[i].y = 0;
 	}
 	// Cuerpos vacíos
 	for(i = datos.n; i < cuerpos_totales; i++){
 		masas[i].id = -1; masas[i].m = 0;
-		pos[i].id = -1; pos[i].x = 0; pos[i].y = 0;
+		all[i].id = -1; all[i].x = 0; all[i].y = 0;
 		vel[i].id = -1; vel[i].x = 0; vel[i].y = 0;
 		acc[i].id = -1; acc[i].x = 0; acc[i].y = 0;
 	}
@@ -135,92 +146,47 @@ void leerDatosCuerpo() {
 
 }
 
-void calcularAceleracion(int fase){
+void calcularAceleracion(){
 
-	struct Coord *pss = (fase == 0)?p_local:p_anillo;
+	for(int i = 0; i < ncu; i++){
+		acc[i].id = vel[i].id;
+		acc[i].x = 0.0;
+		acc[i].y = 0.0;
+
+		//colores[i] = (long)rand%65000;
+	}
 
 	double dx, dy, dm, d3, ax, ay;
+	int sig;
 
-	for(int c = 0, p = (rank + fase) % npr; c < ncu && p < ncu*npr; c++, p += npr){
-		for(int d = 0, q = rank; d < ncu && q < ncu*npr; d++, q += npr){
+	for(int c = 0; c < ncu; c++){
 
-			if(p > q){
+		sig = vel[c].id + 1;
+		if(sig >= cuerpos_totales) sig = 0;
 
-				dx = pss[d].x - p_local[c].x;
-				dy = pss[d].y - p_local[c].y;
-				dm = sqrt(pow(dx, 2) + pow(dy, 2));
-				//printf("R%d: %f\n", rank, dm);
+		for(int i = 0; i < cuerpos_totales-1; i++){
 
-				if(dm >= datos.u){
+			dx = all[sig].x - pos[c].x;
+			dy = all[sig].y - pos[c].y;
+			dm = sqrt(pow(dx, 2) + pow(dy, 2));
 
-					d3 = pow(dm, 3);
+			if(dm >= datos.u){
 
-					ax = (G * -dx) / d3;
-					ay = (G * -dy) / d3;
+				d3 = pow(dm, 3);
 
-					a_local[d].x += ax * -masas[p_anillo[c].id].m;
-					a_local[d].y += ay * -masas[p_anillo[c].id].m;
+				ax = (G * dx) / d3;
+				ay = (G * dy) / d3;
 
-					a_anillo[c].x += ax * masas[p_local[d].id].m;
-					a_anillo[c].y += ay * masas[p_local[d].id].m;
+				acc[c].x += ax * masas[sig].m;
+				acc[c].y += ay * masas[sig].m;
 
-				}
+				sig++;
+				if(sig >= cuerpos_totales) sig = 0;
+
 			}
-			// rk += npr;
-			// if(rk >= ncu*npr) break;
 		}
-		// yo += npr;
-		// if(yo >= ncu*npr) break;
 	}
-
 }
-
-void prepararAceleracion(){
-
-	int src = (rank + 1) % npr;
-	int dst = (rank - 1 + npr) % npr;
-
-	// p_anillo <- p_local
-
-	for(int i = 0; i < ncu; i++){
-		p_anillo[i].id = p_local[i].id;
-		p_anillo[i].x = p_local[i].x;
-		p_anillo[i].y = p_local[i].y;
-	}
-
-	// a_local <- a_anillo <- 0.0
-
-	for(int i = 0; i < ncu; i++){
-		a_anillo[i].id = p_local[i].id;
-		a_local[i].id = a_anillo[i].id;
-		a_local[i].x = a_anillo[i].x = 0.0;
-		a_local[i].y = a_anillo[i].y = 0.0;
-	}
-
-	// Calculamos aceleraciones
-
-	calcularAceleracion(0);
-
-	for(int fase = 1; fase < npr; fase++){
-
-		MPI_Sendrecv_replace(p_anillo, ncu, MPI_Coord, dst, 1, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-		MPI_Sendrecv_replace(a_anillo, ncu, MPI_Coord, dst, 1, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-		calcularAceleracion(fase);
-
-	}
-
-	MPI_Sendrecv_replace(a_anillo, ncu, MPI_Coord, dst, 1, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-	for(int i = 0; i < ncu; i++){
-		a_local[i].x += a_anillo[i].x;
-		a_local[i].y += a_anillo[i].y;
-	}
-
-}
-
-
 
 void mpi_datatype_datos(){
 
@@ -252,19 +218,51 @@ void mpi_datatype_coord(){
 
 }
 
-void mpi_datatype_cncr(){
-	MPI_Datatype MPI_CNC;
-	MPI_Type_vector(ncu, 1, npr, MPI_Coord, &MPI_CNC);
-	MPI_Type_commit(&MPI_CNC);
-	MPI_Aint lb, extent;
-	MPI_Type_get_extent(MPI_Coord, &lb, &extent);
-	MPI_Type_create_resized(MPI_CNC, lb, extent, &MPI_CNCR);
-	MPI_Type_commit(&MPI_CNCR);
+
+void initX() {
+
+      dpy = XOpenDisplay(NIL);
+      screen = DefaultScreen(dpy);
+      assert(dpy);
+
+      int blackColor = BlackPixel(dpy, DefaultScreen(dpy));
+      int whiteColor = WhitePixel(dpy, DefaultScreen(dpy));
+
+      w = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy), 0, 0,
+                                     400, 400, 0, blackColor, blackColor);
+      XSelectInput(dpy, w, StructureNotifyMask);
+      XMapWindow(dpy, w);
+      gc = XCreateGC(dpy, w, 0, NIL);
+      XSetForeground(dpy, gc, whiteColor);
+      for(;;) {
+            XEvent e;
+            XNextEvent(dpy, &e);
+            if (e.type == MapNotify)
+                  break;
+      }
+
 }
+
+
+void dibujaPunto(int x,int y, int i, unsigned long color) {
+
+	XParseColor(dpy, DefaultColormap(dpy,screen), "chartreuse", &colorX);
+	XAllocColor(dpy, DefaultColormap(dpy, screen), &colorX);
+	chartreuse=colorX.pixel;
+    XSetForeground(dpy, gc, chartreuse);
+    XDrawArc(dpy, w, gc,x,y, 17, 17, 0, 23040);
+    XFlush(dpy);
+
+}
+
+
+
 
 int main(int argc, char *argv[]) {
 
 	/* - - - - - Inicialización - - - - - */
+
+	int rank, npr;
 
 	MPI_Init(&argc, &argv);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -307,28 +305,15 @@ int main(int argc, char *argv[]) {
 	if((datos.n % npr) > 0) ncu++;
 	cuerpos_totales = ncu * npr;
 
-	// Creamos datatype MPI_CNCR
-
-	mpi_datatype_cncr();
-
 	// Se reserva memoria para guardar los datos de los cuerpos
 
-	masas = malloc((sizeof(struct Masas)) * cuerpos_totales);
-	if(rank == 0){
-		pos = malloc((sizeof(struct Coord)) * cuerpos_totales);
-		vel = malloc((sizeof(struct Coord)) * cuerpos_totales);
-		acc = malloc((sizeof(struct Coord)) * cuerpos_totales);
-	}else{
-		vel = malloc((sizeof(struct Coord)) * ncu);
-	}
-
-	// Se reserva memoria para los anillos
-
-	p_local = malloc(sizeof(struct Coord) * ncu);
-	p_anillo = malloc(sizeof(struct Coord) * ncu);
-	a_local = malloc(sizeof(struct Coord) * ncu);
-	a_anillo = malloc(sizeof(struct Coord) * ncu);
-
+	int aux = (rank == 0)?cuerpos_totales:ncu;
+	masas = malloc((sizeof(struct Masas)+24) * cuerpos_totales);
+	all = malloc((sizeof(struct Coord)+24) * cuerpos_totales); // Si no ponemos el 16/24/32... sale un error de memoria (aunque el programa sigue funcionando igual)
+	pos = malloc((sizeof(struct Coord) * ncu));
+	vel = malloc(sizeof(struct Coord) * aux);
+	acc = malloc(sizeof(struct Coord) * aux);
+	//colores = (long *)malloc(datos.n*sizeof(double));
 
 	// Rank 0 obtiene y muestra/escribe los datos de los cuerpos
 
@@ -369,8 +354,12 @@ int main(int argc, char *argv[]) {
 
 	// Envío/Recepción de las posiciones y velocidades desde 0 a los demás
 
-	MPI_Scatter(pos, 1, MPI_CNCR, p_local, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
+	MPI_Scatter(all, ncu, MPI_Coord, pos, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 	MPI_Scatter(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
+
+	// Envío/Recepción de las posiciones hacia/desde todos los cuerpos
+
+	MPI_Allgather(pos, ncu, MPI_Coord, all, ncu, MPI_Coord, MPI_COMM_WORLD);
 
 
 	double inicio, fin; // Tiempo transcurrido
@@ -385,55 +374,62 @@ int main(int argc, char *argv[]) {
 
 	// Cálculo de aceleraciones iniciales
 
-	prepararAceleracion();
+	calcularAceleracion();
 
-	MPI_Gather(a_local, ncu, MPI_Coord, acc, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
-
+	if (rank == 0) initX();
+	
+	printf("Ventana creada \n");
 	for(int pasos = 1; pasos <= datos.tp; pasos++){
 
 		// Recorremos los cuerpos asignados al proceso actual
 
 		for(int i = 0; i < ncu; i++){
 
-			p_local[i].x += vel[i].x * datos.delta;
-			p_local[i].y += vel[i].y * datos.delta;
-			vel[i].x += a_local[i].x * datos.delta;
-			vel[i].y += a_local[i].y * datos.delta;
+			pos[i].x += vel[i].x * datos.delta;
+			pos[i].y += vel[i].y * datos.delta;
+			vel[i].x += acc[i].x * datos.delta;
+			vel[i].y += acc[i].y * datos.delta;
 
 		}
 
 		// Envío/Recepción hacia/desde todos de las posiciones nuevas
 
-	//	MPI_Allgather(pos, ncu, MPI_Coord, all, ncu, MPI_Coord, MPI_COMM_WORLD);
+		MPI_Allgather(pos, ncu, MPI_Coord, all, ncu, MPI_Coord, MPI_COMM_WORLD);
 
 		// Calculamos aceleraciones
 
-		prepararAceleracion();
+		calcularAceleracion();
 
-		MPI_Gather(p_local, ncu, MPI_Coord, pos, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
-		MPI_Gather(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
-		MPI_Gather(a_local, ncu, MPI_Coord, acc, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 
 		// Incrementamos t
 
 		t += datos.delta;
+		
+		MPI_Gather(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
+		MPI_Gather(acc, ncu, MPI_Coord, acc, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
 
+		
 		if(pasos % datos.k == 0){
 
 			// Envío/Recepción de velocidades y aceleraciones
 
-			// MPI_Gather(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
-			// MPI_Gather(acc, ncu, MPI_Coord, acc, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
+			
+
 
 			// Rank 0 imprime cuerpos
 
 			if(rank == 0){
 				if(flag){
-					 printf("\n            \t%*s\t%*s\t%*s\t%*s\t%*s\t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
-					 flag = 0;
-				 }
+					printf("\n            \t%*s\t%*s\t%*s\t%*s\t%*s\t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");					
+					flag = 0;
+				}
 				printf("%.2f\n", t);
 				imprimirTerminal(0);
+			}
+		}
+		if (rank == 0) {
+			for (int j=0; j<datos.n; j++) {
+				dibujaPunto((int)(pos[j].x), (int)(pos[j].y), j, chartreuse);
 			}
 		}
 
@@ -449,17 +445,17 @@ int main(int argc, char *argv[]) {
 	double tiempo_total;
 	MPI_Reduce(&tiempo_indv, &tiempo_total, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 	if(rank == 0) printf("\nPrograma ejecutado en %f segundos.\n", tiempo_total);
-
+	sleep(4);
 	/* - - - - Finalización - - - - */
 
 	MPI_Finalize();
 
 	free(masas);
+	free(all);
 	free(pos);
 	free(vel);
 	free(acc);
-	free(p_local); free(p_anillo);
-	free(a_local); free(a_anillo);
+	//free(colores);
 
 	return 0;
 
