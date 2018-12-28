@@ -33,6 +33,7 @@ struct Coord {
 struct Datos datos;
 struct Masas *masas;
 struct Coord *pos; // Posiciones
+struct Coord *all; // Todas las posiciones
 struct Coord *vel; // Velocidades
 struct Coord *acc; // Aceleraciones
 
@@ -300,14 +301,22 @@ int main(int argc, char *argv[]) {
 
 	// Cálculo de aceleraciones iniciales
 
-	calcularAceleracion();
+	double inicio, fin; // Tiempo transcurrido
 
-	double t = 0.0;
 	int yo;
+	double t = 0.0;
+
+	int flag = 1;
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	inicio = MPI_Wtime();
+
+	calcularAceleracion();
 
 	for(int pasos = 1; pasos <= datos.tp; pasos++){
 
-		// Recorriendo los cuerpos asignados a mi proceso, calculo de posiciones y velocidades
+		// Recorriendo los cuerpos asignados a mi proceso, cálculo de posiciones y velocidades
 		for(int i = 0; i < ncu; i++){
 
 			yo = vel[i].id;
@@ -329,7 +338,7 @@ int main(int argc, char *argv[]) {
 			MPI_Recv(&(pos[0]), 1, MPI_Coord, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		}
 
-		// // Envío a rank 0 y posterior Bcast
+		// Envío a rank 0 y posterior Bcast
 		// int v;
 		// if(rank == 0){
 		// 	for(int i = 1; i < npr; i++){
@@ -350,23 +359,47 @@ int main(int argc, char *argv[]) {
 		// MPI_Gather(pos, cuerpos_totales, MPI_Coord, pos, cuerpos_totales, MPI_Coord, 0, MPI_COMM_WORLD);
 		// MPI_Bcast(pos, cuerpos_totales, MPI_Coord, 0, MPI_COMM_WORLD);
 
-		// // Allgather
-		// MPI_Allgather(pos, cuerpos_totales, MPI_Coord, pos, cuerpos_totales, MPI_Coord, MPI_COMM_WORLD);
+		// Allgather
+		// MPI_Allgather(MPI_IN_PLACE, cuerpos_totales, MPI_Coord, pos, cuerpos_totales, MPI_Coord, MPI_COMM_WORLD);
 
 		calcularAceleracion();
 
 		t += datos.delta;
 
 		if(pasos % datos.k == 0){
-			// MPI_Gather(vel, ncu, MPI_Coord, vel, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
-			// MPI_Gather(acc, ncu, MPI_Coord, acc, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
-			// MPI_Gather(pos, ncu, MPI_Coord, pos, ncu, MPI_Coord, 0, MPI_COMM_WORLD);
-			if(rank == 0) printf("%.2f\n", t);
-			MPI_Barrier(MPI_COMM_WORLD);
-			printf("Cuerpo: %d -> ", yo);
-			printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, pos[rank].x, 10, pos[rank].y, 10, vel[0].x, 10, vel[0].y, 10, acc[0].x, 10, acc[0].y);
+
+			// Envío de rank 1 a rank 2
+
+			if(rank == 0){
+				MPI_Recv(&(vel[1]), 1, MPI_Coord, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+					MPI_Recv(&(acc[1]), 1, MPI_Coord, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			}else{
+				MPI_Send(&(vel[0]), 1, MPI_Coord, 0, 0, MPI_COMM_WORLD);
+				MPI_Send(&(acc[0]), 1, MPI_Coord, 0, 0, MPI_COMM_WORLD);
+			}
+
+			// Rank 0 imprime
+
+			if(rank == 0){
+				if(flag){
+					 printf("\n            \t%*s\t%*s\t%*s\t%*s\t%*s\t%*s\n", 10, "Posicion(x)", 10, "Posicion(y)", 10, "Velocidad(x)", 10, "Velocidad(y)", 10, "Aceleracion(x)", 10, "Aceleracion(y)");
+					 flag = 0;
+				 }
+				printf("%.2f\n", t);
+				for(int i = 0; i < datos.n; i++){
+					printf("Cuerpo: %d -> ", pos[i].id);
+					printf("\t%*f\t%*f\t%*f\t%*f\t%*f\t%*f\n", 10, pos[i].x, 10, pos[i].y, 10, vel[i].x, 10, vel[i].y, 10, acc[i].x, 10, acc[i].y);
+				}
+			}
+
 		}
+
 	}
+
+	fin = MPI_Wtime();
+	double tiempo_indv = fin - inicio, tiempo_total;
+	MPI_Reduce(&tiempo_indv, &tiempo_total, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	if(rank == 0) printf("\nPrograma ejecutado en %f segundos.\n", tiempo_total);
 
 	MPI_Finalize();
 
