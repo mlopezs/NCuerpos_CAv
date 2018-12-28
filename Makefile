@@ -1,4 +1,4 @@
-all: compile-par run-par
+all: compile-par-rapido run-par-rapido
 
 compile-sec:
 	gcc NCuerposSecuencial.c -o NCuerposSecuencial -lm -Wall
@@ -11,3 +11,9 @@ compile-par:
 
 run-par:
 	mpirun -np 2 NCuerposParalelo
+
+compile-par-rapido:
+	mpicc NCuerposParalelo_AlgoritmoRapido.c -o NCuerposParalelo_AlgoritmoRapido -lm -Wall
+
+run-par-rapido:
+	mpirun -np 2 NCuerposParalelo_AlgoritmoRapido
