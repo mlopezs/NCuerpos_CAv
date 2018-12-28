@@ -1,3 +1,19 @@
+/************************************
+Marcos López Sobrino
+Alberto Salas Seguín
+Adrián Bustos Marín
+************************************/
+
+/************************************
+
+Mejoras realizadas:
+	- Páginas 15-16:
+		+ Imprimir resultados cada 'k' pasos.
+		+ Ahorro de cálculos.
+	- Página 18: Tomar ciertos datos de archivo
+
+*************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
