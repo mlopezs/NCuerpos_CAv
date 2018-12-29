@@ -275,9 +275,10 @@ for(int i = 0; i < ncu; i++){
 	a_local[i].y += a_anillo[i].y;
 }
 \end{lstlisting}
-En el bucle de la línea 1 del código anterior, lo que se hace es que por cada fase, enviamos y recibimos \textit{p\_anillo} y \textit{a\_anillo}, es decir, cada proceso en su variable p\_anillo y a\_anillo está guardando las variables p\_anillo y a\_anillo de todos los demás, de este modo, todos los procesos tienen todos los datos. \\
+En el bucle de la línea 1 del código anterior, lo que se hace es que en cada fase, enviamos y recibimos \textit{p\_anillo} y \textit{a\_anillo}, es decir, cada proceso en su variable p\_anillo y a\_anillo tiene almecenadas las posiciones y velocidades de todos los cuerpos; en todos los procesos las mismas. \\
 
-Cuando termina el bucle, como hay que sumar todas las aceleraciones, en la última iteración para tener todas esas iteraciones, en la línea 16, se ejecuta la primitiva \textbf{\textit{MPI\_Sendrecv\_replace}} de a\_anillo, de modo que todos los procesos tienen las aceleraciones de todos los procesos. \\
+Cuando termina el bucle, volvemos a obtener todas las aceleraciones (calculadas en la última iteración) haciendo uso de \textbf{\textit{MPI\_Sendrecv\_replace}} en la línea 16. Así, todos los procesos vuelven a tener todas las aceleraciones. \\
 
-Posteriormente, en las aceleraciones locales del proceso, se suma su propia aceleración local (a\_local[i]) más la aceleración del anillo (a\_anillo[i]) en las posiciones \textit{x} e \textit{y}.
+Por último, nos quedaría sumar las aceleraciones guardadas en \textit{a\_anillo} a las locales. Esto se hace en el bucle de la línea 20. Al terminar, ya tendríamos las aceleraciones correctas de los cuerpos en \textit{a\_local}.
+
 \end{document}
