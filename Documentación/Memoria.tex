@@ -228,7 +228,7 @@ En primer lugar, se han implementado 3 estructuras:
 	
 	\item \textbf{struct Masas}. En esta estructura se encuentra el \textbf{id} y la masa (\textbf{m}) de cada cuerpo.
 	
-	\item \textbf{struct Coord}. Donde almacenamos el \textbf{id}, la posición \textbf{x} y la posición \textbf{y} de cada uno de los cuerpos.
+	\item \textbf{struct Coord}. Donde almacenamos el \textbf{id}, la componente \textbf{x} y la componente \textbf{y} de cada uno de los cuerpos.
 \end{itemize}
 
 Para poder trabajar con estas estructuras se ha utilizado \textbf{\textit{MPI\_Datatype}}.
@@ -245,7 +245,7 @@ Las operaciones que se han utilizado han sido las mencionadas en el enunciado y 
 	\item Para el envío y recepción de las masas se ha utilizado la operación \textbf{\textit{MPI\_Bcast}}.
 	\item Para el envío y recepción de las posiciones y velocidades desde el rank 0 a los demás, se ha optado por 						\textbf{\textit{MPI\_Scatter}} como hemos mencionado anteriormente.
 	\item Para sincronizar a todos los procesos \textbf{\textit{MPI\_Barrier}}.
-	\item Para que el proceso 0, pueda imprimir los valores de los cuerpos y que se produzca una salida ordenada, primero debe 			recibir todos los datos, que son las velocidades y aceleraciones de los cuerpos asignados a otros procesos. Para este fin, se 	ha usado \textbf{\textit{MPI\_Gather}}.
+	\item Para que el proceso 0, pueda imprimir los valores de los cuerpos y que se produzca una salida ordenada, primero debe 			recibir todos los datos, que son las posiciones, velocidades y aceleraciones de los cuerpos asignados a otros procesos. Para este fin, se 	ha usado \textbf{\textit{MPI\_Gather}}.
 \end{itemize}
 
 \newpage
