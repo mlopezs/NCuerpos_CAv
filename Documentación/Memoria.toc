@@ -1,0 +1,2 @@
+\babel@toc {spanish}{}
+\contentsline {section}{\numberline {1}Instrucciones para la ejecuci\IeC {\'o}n de los programas.}{2}{section.1}

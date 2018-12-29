@@ -1,0 +1,199 @@
+\documentclass[11pt]{article}
+\usepackage{natbib}
+\usepackage{url}
+\usepackage[utf8]{inputenc} % Codificación
+\usepackage{amsmath}
+\usepackage{graphicx}
+\graphicspath{{images/}} % Carpeta en la cual se van a buscar las imagenes
+\usepackage{subfigure}	% Permite la Inclusión de subfiguras
+%\usepackage{parskip} % Borrar identación de parrafos.
+\setlength{\parskip}{3mm} % Longitud del espaciado entre parrafos
+\usepackage[hidelinks]{hyperref} % Referencias (links)
+\usepackage{fancyhdr}
+\usepackage{vmargin}
+\setpapersize{A4} % Formato del papel - A4
+\setmarginsrb{3 cm}{2.5 cm}{3 cm}{2.5 cm}{1 cm}{1.5 cm}{1 cm}{1.5 cm} % Margenes
+\usepackage{paralist} % Permite un mayor control sobre las listas
+\usepackage{textcomp,marvosym,pifont} % Generación de símbolos especiales
+\usepackage[usenames,dvipsnames,svgnames,x11names,table]{xcolor}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Complemento para insertar código en la memoria:
+% A partir de 'Listados de código cómodos y resultones con listings' de David Villa
+% http://crysol.org/es/node/909
+
+\usepackage{color}
+\definecolor{gray97}{gray}{.97}
+\definecolor{gray75}{gray}{.75}
+\definecolor{gray45}{gray}{.45}
+
+\usepackage{listings}
+\lstset{ frame=Ltb,
+	framerule=0pt,
+	aboveskip=0.5cm,
+	framextopmargin=3pt,
+	framexbottommargin=3pt,
+	framexleftmargin=0.4cm,
+	framesep=0pt,
+	rulesep=.4pt,
+	backgroundcolor=\color{gray97},
+	rulesepcolor=\color{black},
+	texcl=true,
+	%
+	stringstyle=\ttfamily,
+	showstringspaces = false,
+	basicstyle=\small\ttfamily,
+	commentstyle=\color{gray45},
+	keywordstyle=\bfseries,
+	%
+	numbers=left,
+	numbersep=15pt,
+	numberstyle=\tiny,
+	numberfirstline = false,
+	breaklines=true,
+}
+
+% minimizar fragmentado de listados
+\lstnewenvironment{listing}[1][]
+{\lstset{#1}\pagebreak[0]}{\pagebreak[0]}
+
+\lstdefinestyle{consola}
+{basicstyle=\scriptsize\bf\ttfamily,
+	backgroundcolor=\color{gray75},
+}
+
+\lstdefinestyle{C}
+{language=C,
+}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{float} % Permite usar H en las figuras, de manera que se coloquen en la posición exacta en la que están en el código.
+
+
+% Añade un comando para crear indicaciones de pulsación de teclas
+\usepackage{tikz} % Paquete especializado en gráficos
+\usetikzlibrary{shadows} % Necesario para poder crear nuevo comando de indicación de pulsación de tecla.
+\newcommand*\tecla[1]{%   
+	\tikz[baseline=(key.base)]
+	\node[%
+	draw,
+	fill=white,
+	drop shadow={shadow xshift=0.25ex,shadow yshift=-0.25ex,fill=black,opacity=0.75},
+	rectangle,
+	rounded corners=2pt,
+	inner sep=1pt,
+	line width=0.5pt,
+	font=\scriptsize\sffamily
+	](key) {#1\strut}
+	;
+}
+
+\newif\ifspanish % Condicional que permite seleccionar el lenguage.
+\spanishtrue
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%					Principales variables del documento					%%%%%%%%%
+
+\title{Práctica NCuerpos.}							% Titulo
+\author{Marcos López Sobrino y Alberto Salas Seguín.}							% Autor
+\date{\today}											% Fecha
+\newcommand{\subject}{Computadores Avanzados.}						% Asignatura
+\newcommand{\course}{4º Grado en Ingeniería Informática.}		% Curso
+
+%\spanishfalse	% Descomentar esta línea si el trabajo está en inglés
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\ifspanish
+	\usepackage[spanish]{babel} % Paquete de español
+	\newcommand{\dateText}{Fecha:}
+	\renewcommand{\lstlistingname}{Listado} % Renombrar listados para que aparezcan en español.
+	% Algoritmos
+	\usepackage[ruled,vlined,spanish]{algorithm2e} % Permite pseudocódigos. NECESARIO INSTALAR texlive-science (sudo apt-get install texlive-science)
+\else
+	\usepackage[english]{babel} % Paquete de inglés
+	\newcommand{\dateText}{Date:}
+	% Algoritmos
+	\usepackage[ruled,vlined,english]{algorithm2e}
+\fi
+
+\makeatletter
+\let\thetitle\@title
+\let\theauthor\@author
+\let\thedate\@date
+\makeatother
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\theauthor}
+\lhead{\thetitle}
+\cfoot{\thepage}
+
+\begin{document}
+\begin{titlepage}
+	\centering
+    \includegraphics[scale = 0.25]{esilogo.png}\\[1.0 cm]	% Logo de la universidad
+    \textsc{\LARGE Universidad de Castilla-La Mancha}\\[0.5 cm]	% Nombre de la universidad
+    \textsc{\LARGE Escuela Superior de Informática}\\[2.0 cm]
+	\textsc{\Large \textbf{\subject}}\\[0.5 cm]				% Asignatura
+	\textsc{\large \course}\\[0.5 cm]						% Curso
+	\rule{\linewidth}{0.2 mm} \\[0.4 cm]
+	{ \huge \bfseries \thetitle}\\
+	\rule{\linewidth}{0.2 mm} \\[1.5 cm]
+	
+	\begin{minipage}{0.4\textwidth}
+		\begin{flushleft} \large
+			\emph{Autor:}\\
+			\textbf{\theauthor}
+			\end{flushleft}
+			\end{minipage}~
+			\begin{minipage}{0.4\textwidth}
+			\begin{flushright} \large
+			\emph{\dateText} \\
+			\thedate
+		\end{flushright}
+	\end{minipage}\\[1.5 cm]
+ 
+	\vfill
+	
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Instrucciones para la ejecución de los programas.}
+Para la compilación y ejecución de ambos programas, se ha decidido realizar un \textit{Makefile}, donde para compilar tanto el programa paralelo rápido es suficiente con abrir un terminal e introducir el comando:
+\begin{lstlisting}[style=C, numbers=none]
+make all
+\end{lstlisting}
+Esta instrucción, como vemos a continuación, primero compila el programa y posteriormente lo ejecuta.
+\begin{lstlisting}[style=C, numbers=none]
+all: compile-par-rapido run-par-rapido
+\end{lstlisting}
+
+Donde \textbf{\textit{compile-par-rapido}} es:
+
+\begin{lstlisting}[style=C, numbers=none]
+compile-par-rapido:
+	mpicc NCuerposParalelo_AlgoritmoRapido.c -o NCuerposParalelo_AlgoritmoRapido -lm -Wall
+\end{lstlisting}
+
+Y por su parte, \textbf{\textit{run-par-rapido}}
+\begin{lstlisting}[style=C,numbers=none]
+run-par-rapido:
+	mpirun -np 2 NCuerposParalelo_AlgoritmoRapido
+\end{lstlisting}
+
+
+Siguiendo la transparencia 30 del documento, si solo interesa el tiempo el tiempo de ejecución, se ha incluido la directiva de compilación condicional \textbf{\textit{\# ifndef NO\_SAL}} en el programa, de modo que para únicamente obtener el tiempo de ejecución, en el terminal tenemos que introducir la instrucción \textbf{\textit{make compile-par-rapido-nosal}}, esta instrucción es la siguiente:
+
+\begin{lstlisting}[style=C,numbers=none]
+compile-par-rapido-nosal:
+	mpicc NCuerposParalelo_AlgoritmoRapido.c -o NCuerposParalelo_AlgoritmoRapido -lm -Wall -D NO_SAL
+\end{lstlisting}
+
+Posteriormente, ejecutar con \textbf{\textit{make run-par-rapido}}.\\ 
+
+Si en lugar de querer ejecutar el programa paralelo rápido, quisiésemos ejecutar el programa paralelo básico, sería suficiente con introducir el comando \textbf{\textit{make compile-par}} y \textbf{\textit{make run-par}}. Al igual que en el caso del algoritmo paralelo rápido, si solo nos interesa el tiempo de ejecución y no los resultados, lo que tenemos que hacer es compilar el programa mediante \textbf{\textit{make compile-par-nosal}} y después ejecutar con \textbf{\textit{make run-par}}.
+\end{document}
