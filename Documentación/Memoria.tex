@@ -196,4 +196,64 @@ compile-par-rapido-nosal:
 Posteriormente, ejecutar con \textbf{\textit{make run-par-rapido}}.\\ 
 
 Si en lugar de querer ejecutar el programa paralelo rápido, quisiésemos ejecutar el programa paralelo básico, sería suficiente con introducir el comando \textbf{\textit{make compile-par}} y \textbf{\textit{make run-par}}. Al igual que en el caso del algoritmo paralelo rápido, si solo nos interesa el tiempo de ejecución y no los resultados, lo que tenemos que hacer es compilar el programa mediante \textbf{\textit{make compile-par-nosal}} y después ejecutar con \textbf{\textit{make run-par}}.
+
+\section{Explicaciones de diseño.}
+En primer lugar, se han implementado 3 estructuras:
+\begin{itemize}
+	\item \textbf{struct Datos}. Dicha estructura contiene las variables \textbf{n, tp, k, delta, u} necesarias para el algoritmo.
+	
+	\item \textbf{struct Masas}. En esta estructura se encuentra el \textbf{id} y la masa (\textbf{m}) de cada cuerpo.
+	
+	\item \textbf{struct Coord}. Donde almacenamos el \textbf{id}, la posición \textbf{x} y la posición \textbf{y} de cada uno de los cuerpos.
+\end{itemize}
+
+Para poder trabajar con estas estructuras se ha utilizado \textbf{\textit{MPI\_Datatype}}.
+\begin{lstlisting}[style=C,numbers=none]
+MPI_Datatype MPI_Datos;
+MPI_Datatype MPI_Masas;
+MPI_Datatype MPI_Coord;
+MPI_Datatype MPI_CNCR;
+\end{lstlisting}
+\textbf{\textit{MPI\_Datatype MPI\_CNCR}} se ha utilizado para la implementación del algoritmo con distribución cíclica como se dice en el documento a partir de la diapositiva 44. De este modo, el proceso 0 va a almacenar las posiciones de todos los cuerpos y se las va a enviar a todos los procesos mediante la primitiva \textbf{\textit{MPI\_Scatter}}. \\
+
+Las operaciones que se han utilizado han sido las mencionadas en el enunciado y explicadas en el documento \textit{Introducción a MPI}. \\
+\begin{itemize}
+	\item Para el envío y recepción de las masas se ha utilizado la operación \textbf{\textit{MPI\_Bcast}}.
+	\item Para el envío y recepción de las posiciones y velocidades desde el rank 0 a los demás, se ha optado por 						\textbf{\textit{MPI\_Scatter}} como hemos mencionado anteriormente.
+	\item Para sincronizar a todos los procesos \textbf{\textit{MPI\_Barrier}}.
+	\item Para que el proceso 0, pueda imprimir los valores de los cuerpos y que se produzca una salida ordenada, primero debe 			recibir todos los datos, que son las velocidades y aceleraciones de los cuerpos asignados a otros procesos. Para este fin, se 	ha usado \textbf{\textit{MPI\_Gather}}.
+\end{itemize}
+
+\newpage
+\section{Solución a la dificultad de la pagina 43.}
+\begin{lstlisting}[style=C]
+for(int fase = 1; fase < npr; fase++){
+
+  \* ---- Enviamos a destino/Recibimos desde fuente: p_anillo y a_anillo ----*\
+
+   MPI_Sendrecv_replace(p_anillo, ncu, MPI_Coord, dst, 1, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+   MPI_Sendrecv_replace(a_anillo, ncu, MPI_Coord, dst, 1, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+  \* ---- Calculamos aceleraciones ---- *\
+
+   calcularAceleracion(fase);
+
+}
+	
+   \* ---- Enviamos a_anillo a destino y recibimos a_anillo de fuente ----*\
+
+MPI_Sendrecv_replace(a_anillo, ncu, MPI_Coord, dst, 1, src, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+   \* ---- Sumamos aceleraciones ----*\
+
+for(int i = 0; i < ncu; i++){
+	a_local[i].x += a_anillo[i].x;
+	a_local[i].y += a_anillo[i].y;
+}
+\end{lstlisting}
+En el bucle de la línea 1 del código anterior, lo que se hace es que por cada fase, enviamos y recibimos \textit{p\_anillo} y \textit{a\_anillo}, es decir, cada proceso en su variable p\_anillo y a\_anillo está guardando las variables p\_anillo y a\_anillo de todos los demás, de este modo, todos los procesos tienen todos los datos. \\
+
+Cuando termina el bucle, como hay que sumar todas las aceleraciones, en la última iteración para tener todas esas iteraciones, en la línea 16, se ejecuta la primitiva \textbf{\textit{MPI\_Sendrecv\_replace}} de a\_anillo, de modo que todos los procesos tienen las aceleraciones de todos los procesos. \\
+
+Posteriormente, en las aceleraciones locales del proceso, se suma su propia aceleración local (a\_local[i]) más la aceleración del anillo (a\_anillo[i]) en las posiciones \textit{x} e \textit{y}.
 \end{document}
