@@ -163,40 +163,64 @@
 \newpage
 
 \section{Instrucciones para la ejecución de los programas.}
-Para la compilación y ejecución de ambos programas, se ha decidido realizar un \textit{Makefile}, donde para compilar tanto el programa paralelo rápido es suficiente con abrir un terminal e introducir el comando:
-\begin{lstlisting}[style=C, numbers=none]
-make all
-\end{lstlisting}
-Esta instrucción, como vemos a continuación, primero compila el programa y posteriormente lo ejecuta.
+Para la compilación y ejecución de los programas, se ha decidido realizar un \textit{Makefile}, donde tenemos las siguientes instrucciones:
 \begin{lstlisting}[style=C, numbers=none]
 all: compile-par-rapido run-par-rapido
 \end{lstlisting}
+Mediante esta instrucción, primero se compila el programa paralelo rápido y seguidamente, una vez compilado, se ejecuta dicho programa. \\
 
-Donde \textbf{\textit{compile-par-rapido}} es:
+\begin{lstlisting}[style=C, numbers=none]
+compile-sec:
+	gcc NCuerposSecuencial.c -o NCuerposSecuencial -lm -Wall
+\end{lstlisting}
+Con esta instrucción, se compila el programa secuencial.\\
+
+\begin{lstlisting}[style=C, numbers=none]
+run-sec:
+	./NCuerposSecuencial
+\end{lstlisting}
+A través de esta instrucción, el programa secuencial es ejecutado. \\
+
+\begin{lstlisting}[style=C, numbers=none]
+compile-par:
+	mpicc NCuerposParalelo.c -o NCuerposParalelo -lm -Wall
+\end{lstlisting}
+Mediante instrucción se compila el programa paralelo básico. \\
+
+Siguiendo la transparencia 30 del documento, si solo interesa el tiempo el tiempo de ejecución, se ha incluido la directiva de compilación condicional \textbf{\textit{\# ifndef NO\_SAL}} en el programa, de modo que para únicamente obtener el tiempo de ejecución, en el terminal tenemos que introducir la instrucción \textbf{\textit{make compile-par-nosal}}. Esta instrucción es:
+
+\begin{lstlisting}[style=C, numbers=none]
+compile-par-nosal:
+   mpicc NCuerposParalelo.c -o NCuerposParalelo -lm -Wall -D NO_SAL
+\end{lstlisting}
+La ejecución del programa paralelo básico se hace con la siguiente instrucción.
+\begin{lstlisting}[style=C, numbers=none]
+run-par:
+	mpirun -np 2 NCuerposParalelo
+\end{lstlisting}
+\newpage
 
 \begin{lstlisting}[style=C, numbers=none]
 compile-par-rapido:
 	mpicc NCuerposParalelo_AlgoritmoRapido.c -o NCuerposParalelo_AlgoritmoRapido -lm -Wall
 \end{lstlisting}
 
-Y por su parte, \textbf{\textit{run-par-rapido}}
+Esta instrucción es utilizada para la compilación del programa paralelo rápido. \\
+
+Al igual que antes, si únicamente nos interesa el tiempo de ejecución del programa, la instrucción a utilizar es la siguiente:
+\begin{lstlisting}[style=C, numbers=none]
+compile-par-rapido-nosal:
+	mpicc NCuerposParalelo_AlgoritmoRapido.c -o NCuerposParalelo_AlgoritmoRapido -lm -Wall -D NO_SAL
+\end{lstlisting}
+
+Con la instrucción \textit{run-par-rapido} se ejecuta el programa paralelo rápido.
 \begin{lstlisting}[style=C,numbers=none]
 run-par-rapido:
 	mpirun -np 2 NCuerposParalelo_AlgoritmoRapido
 \end{lstlisting}
 
 
-Siguiendo la transparencia 30 del documento, si solo interesa el tiempo el tiempo de ejecución, se ha incluido la directiva de compilación condicional \textbf{\textit{\# ifndef NO\_SAL}} en el programa, de modo que para únicamente obtener el tiempo de ejecución, en el terminal tenemos que introducir la instrucción \textbf{\textit{make compile-par-rapido-nosal}}, esta instrucción es la siguiente:
-
-\begin{lstlisting}[style=C,numbers=none]
-compile-par-rapido-nosal:
-	mpicc NCuerposParalelo_AlgoritmoRapido.c -o NCuerposParalelo_AlgoritmoRapido -lm -Wall -D NO_SAL
-\end{lstlisting}
-
-Posteriormente, ejecutar con \textbf{\textit{make run-par-rapido}}.\\ 
-
-Si en lugar de querer ejecutar el programa paralelo rápido, quisiésemos ejecutar el programa paralelo básico, sería suficiente con introducir el comando \textbf{\textit{make compile-par}} y \textbf{\textit{make run-par}}. Al igual que en el caso del algoritmo paralelo rápido, si solo nos interesa el tiempo de ejecución y no los resultados, lo que tenemos que hacer es compilar el programa mediante \textbf{\textit{make compile-par-nosal}} y después ejecutar con \textbf{\textit{make run-par}}.
-
+\newpage
 \section{Explicaciones de diseño.}
 En primer lugar, se han implementado 3 estructuras:
 \begin{itemize}
