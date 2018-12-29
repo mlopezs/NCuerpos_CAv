@@ -1,7 +1,7 @@
 all: compile-par-rapido run-par-rapido
 
 compile-sec:
-	mpicc NCuerposSecuencial.c -o NCuerposSecuencial -lm -Wall
+	gcc NCuerposSecuencial.c -o NCuerposSecuencial -lm -Wall
 
 run-sec:
 	./NCuerposSecuencial
